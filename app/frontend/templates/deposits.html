@@ -4,54 +4,53 @@
 <h2 class="page-title"><i class="fa-solid fa-money-bill-transfer"></i> Gestion des Avances</h2>
 
 <div class="card form-card">
-    <h3><i class="fa-solid fa-plus"></i> Ajouter une Avance</h3>
-    <form method="post" action="{{ request.url_for('deposits_create') }}">
-      <div class="form-row">
-        <div class="form-group">
-          <label for="employee_id">Employé</label>
-          {# --- FIX: Apply form-select class --- #}
-          <select id="employee_id" name="employee_id" class="form-select" required>
-             <option value="" disabled selected>-- Choisir un employé --</option>
-            {% for e in employees %}
-            <option value="{{ e.id }}">{{ e.first_name }} {{ e.last_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="amount">Montant (TND)</label>
-          {# --- FIX: Apply form-control class --- #}
-          <input type="text" id="amount" name="amount" class="form-control" required placeholder="Ex: 150.50"
-                 pattern="^\d+([.,]\d{1,2})?$"
-                 title="Montant positif, ex: 150 ou 150.50 ou 150,50">
-        </div>
+  <h3><i class="fa-solid fa-plus"></i> Ajouter une Avance</h3>
+  <form method="post" action="{{ request.url_for('deposits_create') }}">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="employee_id">Employé</label>
+        {# --- FIX: Apply form-select class --- #}
+        <select id="employee_id" name="employee_id" class="form-select" required>
+          <option value="" disabled selected>-- Choisir un employé --</option>
+          {% for e in employees %}
+          <option value="{{ e.id }}">{{ e.first_name }} {{ e.last_name }}</option>
+          {% endfor %}
+        </select>
       </div>
-      <div class="form-row">
-         <div class="form-group">
-          <label for="date">Date de l'Avance</label>
-          {# --- FIX: Apply form-control class --- #}
-          <input type="date" id="date" name="date" class="form-control" required value="{{ today_date }}">
-        </div>
-        <div class="form-group">
-          <label for="note">Note (Optionnel)</label>
-          {# --- FIX: Apply form-control class --- #}
-          <input type="text" id="note" name="note" class="form-control" placeholder="Raison, référence...">
-        </div>
+      <div class="form-group">
+        <label for="amount">Montant (TND)</label>
+        {# --- FIX: Apply form-control class --- #}
+        <input type="text" id="amount" name="amount" class="form-control" required placeholder="Ex: 150.50"
+          pattern="^\d+([.,]\d{1,2})?$" title="Montant positif, ex: 150 ou 150.50 ou 150,50">
       </div>
-      <div class="form-actions" style="margin-top: 1rem;"> {# Added margin-top #}
-        <button type="submit" class="btn btn-success">
-            <i class="fa-solid fa-save"></i> Enregistrer Avance
-        </button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="date">Date de l'Avance</label>
+        {# --- FIX: Apply form-control class --- #}
+        <input type="date" id="date" name="date" class="form-control" required value="{{ today_date }}">
       </div>
-    </form>
+      <div class="form-group">
+        <label for="note">Note (Optionnel)</label>
+        {# --- FIX: Apply form-control class --- #}
+        <input type="text" id="note" name="note" class="form-control" placeholder="Raison, référence...">
+      </div>
+    </div>
+    <div class="form-actions" style="margin-top: 1rem;"> {# Added margin-top #}
+      <button type="submit" class="btn btn-success">
+        <i class="fa-solid fa-save"></i> Enregistrer Avance
+      </button>
+    </div>
+  </form>
 </div>
 
 <!-- Sync Button and Modal -->
 <div class="card form-card" style="margin-top: 1.5rem;">
-    <h3><i class="fa-solid fa-sync"></i> Synchronisation Compta</h3>
-    <p>Synchroniser les avances d'aujourd'hui vers l'ancien logiciel.</p>
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#syncModal">
-        <i class="fa-solid fa-database"></i> Synchroniser vers Compta
-    </button>
+  <h3><i class="fa-solid fa-sync"></i> Synchronisation Compta</h3>
+  <p>Synchroniser les avances d'aujourd'hui vers l'ancien logiciel.</p>
+  <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#syncModal">
+    <i class="fa-solid fa-database"></i> Synchroniser vers Compta
+  </button>
 </div>
 
 <!-- Sync Modal -->
@@ -60,147 +59,198 @@
     <div class="modal-content card">
       <div class="modal-header">
         <h5 class="modal-title" id="syncModalLabel">Synchronisation Base de Données</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="background-color: white;"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+          style="background-color: white;"></button>
       </div>
       <div class="modal-body">
-        <form id="syncForm">
-            <div class="form-group mb-3">
-                <label for="syncHost">Serveur (Host)</label>
-                <input type="text" class="form-control" id="syncHost" value="localhost" required>
+        <div class="alert alert-info">
+          <i class="fa-solid fa-cloud"></i> <strong>Note importante:</strong><br>
+          Comme votre site est hébergé sur le Cloud, il ne peut pas se connecter directement à votre ordinateur
+          local.<br>
+          Veuillez choisir une méthode ci-dessous :
+        </div>
+
+        <ul class="nav nav-tabs" id="syncTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="sql-tab" data-bs-toggle="tab" data-bs-target="#sql" type="button"
+              role="tab">Fichier SQL (Manuel)</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="auto-tab" data-bs-toggle="tab" data-bs-target="#auto" type="button"
+              role="tab">Automatique (Script)</button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="syncTabsContent" style="padding-top: 1rem;">
+          <!-- SQL Tab -->
+          <div class="tab-pane fade show active" id="sql" role="tabpanel">
+            <p>Téléchargez un fichier SQL contenant les opérations du jour et exécutez-le sur votre base locale.</p>
+            <form id="syncSqlForm">
+              <div class="form-group mb-3">
+                <label for="syncSchemaSql">Nom de la Base (Schema)</label>
+                <input type="text" class="form-control" id="syncSchemaSql" placeholder="ex: mah1303" value="mah1303"
+                  required>
+              </div>
+              <div class="form-group mb-3">
+                <label for="syncCoddepSql">Code Avance (CODDEP)</label>
+                <input type="number" class="form-control" id="syncCoddepSql" value="2" required>
+              </div>
+              <button type="button" class="btn btn-primary w-100" onclick="downloadSql()">
+                <i class="fa-solid fa-download"></i> Télécharger Fichier SQL
+              </button>
+            </form>
+          </div>
+
+          <!-- Auto Tab -->
+          <div class="tab-pane fade" id="auto" role="tabpanel">
+            <p>Pour une synchronisation automatique, utilisez le script <code>local_sync.py</code> sur votre ordinateur.
+            </p>
+            <ol>
+              <li>Assurez-vous d'avoir Python installé.</li>
+              <li>Téléchargez le script <code>local_sync.py</code> (demandé au développeur).</li>
+              <li>Lancez-le : <code>python local_sync.py</code></li>
+              <li>Entrez vos identifiants Cloud et Local DB.</li>
+            </ol>
+            <div class="alert alert-secondary">
+              Cette méthode connecte votre PC au Cloud pour récupérer les données.
             </div>
-            <div class="form-group mb-3">
-                <label for="syncSchema">Nom de la Base (Schema)</label>
-                <input type="text" class="form-control" id="syncSchema" placeholder="ex: birkal" required>
-            </div>
-             <div class="form-group mb-3">
-                <label for="syncPassword">Mot de Passe DB</label>
-                <input type="password" class="form-control" id="syncPassword" value="6165" required>
-            </div>
-            <div id="syncResult" class="mt-3"></div>
-        </form>
+          </div>
+        </div>
+
+        <div id="syncResult" class="mt-3"></div>
       </div>
       <div class="modal-footer form-actions">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-        <button type="button" class="btn btn-primary" onclick="performSync()">Confirmer</button>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-async function performSync() {
-    const host = document.getElementById('syncHost').value;
-    const schema = document.getElementById('syncSchema').value;
-    const password = document.getElementById('syncPassword').value;
+  async function downloadSql() {
+    const schema = document.getElementById('syncSchemaSql').value;
+    const coddep = document.getElementById('syncCoddepSql').value;
     const resultDiv = document.getElementById('syncResult');
-    
+
     if (!schema) {
-        resultDiv.innerHTML = '<div class="alert alert-warning">Veuillez entrer le nom de la base (Schema).</div>';
-        return;
+      resultDiv.innerHTML = '<div class="alert alert-warning">Veuillez entrer le nom de la base.</div>';
+      return;
     }
 
-    resultDiv.innerHTML = '<div class="alert alert-info">Synchronisation en cours...</div>';
-    
+    resultDiv.innerHTML = '<div class="alert alert-info">Génération du fichier...</div>';
+
     try {
-        const response = await fetch('/api/deposits/sync', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                host: host,
-                schema_name: schema,
-                password: password
-            })
-        });
-        
+      const response = await fetch('/api/sync/generate-sql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          schema_name: schema,
+          coddep_expenses: 1, // Default for expenses (ignored here mostly)
+          coddep_deposits: parseInt(coddep)
+        })
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sync_${new Date().toISOString().slice(0, 10)}.sql`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        resultDiv.innerHTML = '<div class="alert alert-success">Fichier téléchargé ! Exécutez-le sur votre base locale.</div>';
+      } else {
         const data = await response.json();
-        
-        if (data.success) {
-             resultDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-        } else {
-             resultDiv.innerHTML = `<div class="alert alert-danger">Erreur: ${data.message}</div>`;
-        }
-        
+        resultDiv.innerHTML = `<div class="alert alert-danger">Erreur: ${data.message || 'Erreur inconnue'}</div>`;
+      }
+
     } catch (error) {
-        console.error('Error:', error);
-        resultDiv.innerHTML = '<div class="alert alert-danger">Erreur de connexion au serveur.</div>';
+      console.error('Error:', error);
+      resultDiv.innerHTML = '<div class="alert alert-danger">Erreur de connexion au serveur.</div>';
     }
-}
+  }
 </script>
 
 
 <div class="card table-card" style="margin-top: 1.5rem;"> {# Added margin-top #}
-    <h3><i class="fa-solid fa-list-ul"></i> Avances Récentes</h3>
-    {% if deposits %}
-    <div class="table-responsive">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Employé</th>
-              <th>Date</th>
-              <th>Montant (TND)</th>
-              <th>Note</th>
-              <th>Enregistré le</th>
-              {# --- NOUVEAU: Colonne Actions (Admin seulement) --- #}
-              {% if user.permissions.is_admin %}
-                <th>Actions</th>
-              {% endif %}
-            </tr>
-           </thead>
-           <tbody>
-            {% for d in deposits %}
-            <tr>
-              <td>{{ d.id }}</td>
-              <td>
-                  {# --- Utiliser la relation chargée --- #}
-                 {% if d.employee %}
-                    {{ d.employee.first_name }} {{ d.employee.last_name }}
-                 {% else %}
-                    Employé ID: {{ d.employee_id }} (Non trouvé)
-                 {% endif %}
-              </td>
-              <td>{{ d.date.strftime('%Y-%m-%d') }}</td>
-              <td class="amount">{{ "%.2f"|format(d.amount|float) }}</td>
-              <td>{{ d.note or '-' }}</td>
-              <td class="timestamp">{{ d.created_at | to_tunisia }}</td>
-              {# --- NOUVEAU: Bouton Supprimer (Admin seulement) --- #}
-              {% if user.permissions.is_admin %}
-              <td>
-                 <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteDepositModal-{{ d.id }}">
-                   Supprimer
-                 </button>
-              </td>
-              {% endif %}
-              {# --- FIN NOUVEAU --- #}
-            </tr>
-            {% endfor %}
-           </tbody>
-        </table>
-    </div>
-    {# --- Modals moved outside the table card below --- #}
-    {% else %}
-        <p class="no-data" style="padding-top: 1rem;">Aucune avance enregistrée à afficher.</p> {# Added padding #}
-    {% endif %}
+  <h3><i class="fa-solid fa-list-ul"></i> Avances Récentes</h3>
+  {% if deposits %}
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Employé</th>
+          <th>Date</th>
+          <th>Montant (TND)</th>
+          <th>Note</th>
+          <th>Enregistré le</th>
+          {# --- NOUVEAU: Colonne Actions (Admin seulement) --- #}
+          {% if user.permissions.is_admin %}
+          <th>Actions</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in deposits %}
+        <tr>
+          <td>{{ d.id }}</td>
+          <td>
+            {# --- Utiliser la relation chargée --- #}
+            {% if d.employee %}
+            {{ d.employee.first_name }} {{ d.employee.last_name }}
+            {% else %}
+            Employé ID: {{ d.employee_id }} (Non trouvé)
+            {% endif %}
+          </td>
+          <td>{{ d.date.strftime('%Y-%m-%d') }}</td>
+          <td class="amount">{{ "%.2f"|format(d.amount|float) }}</td>
+          <td>{{ d.note or '-' }}</td>
+          <td class="timestamp">{{ d.created_at | to_tunisia }}</td>
+          {# --- NOUVEAU: Bouton Supprimer (Admin seulement) --- #}
+          {% if user.permissions.is_admin %}
+          <td>
+            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"
+              data-bs-target="#deleteDepositModal-{{ d.id }}">
+              Supprimer
+            </button>
+          </td>
+          {% endif %}
+          {# --- FIN NOUVEAU --- #}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {# --- Modals moved outside the table card below --- #}
+  {% else %}
+  <p class="no-data" style="padding-top: 1rem;">Aucune avance enregistrée à afficher.</p> {# Added padding #}
+  {% endif %}
 </div> {# <-- End of card table-card div --> #}
 
-{# --- NOUVEAU: Modals de Confirmation (Admin seulement) --- #}
-{% if user.permissions.is_admin and deposits %} {# Check if user is admin and deposits exist #}
+  {# --- NOUVEAU: Modals de Confirmation (Admin seulement) --- #}
+  {% if user.permissions.is_admin and deposits %} {# Check if user is admin and deposits exist #}
   {% for d in deposits %}
-  <div class="modal fade" id="deleteDepositModal-{{ d.id }}" tabindex="-1" aria-labelledby="deleteDepositModalLabel-{{ d.id }}" aria-hidden="true">
+  <div class="modal fade" id="deleteDepositModal-{{ d.id }}" tabindex="-1"
+    aria-labelledby="deleteDepositModalLabel-{{ d.id }}" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content card"> {# Apply card style to modal #}
         <form action="{{ url_for('deposits_delete', deposit_id=d.id) }}" method="POST">
           <div class="modal-header">
             <h5 class="modal-title" id="deleteDepositModalLabel-{{ d.id }}">Confirmer la Suppression</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="background-color: white;"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+              style="background-color: white;"></button>
           </div>
           <div class="modal-body">
             <p>Êtes-vous sûr de vouloir supprimer l'avance de
-               <strong>{{ "%.2f TND"|format(d.amount|float) }}</strong> du
-               <strong>{{ d.date.strftime('%Y-%m-%d') }}</strong> pour
-               <strong>{{ d.employee.first_name ~ ' ' ~ d.employee.last_name if d.employee else 'Employé ID:' ~ d.employee_id }}</strong> ?
+              <strong>{{ "%.2f TND"|format(d.amount|float) }}</strong> du
+              <strong>{{ d.date.strftime('%Y-%m-%d') }}</strong> pour
+              <strong>{{ d.employee.first_name ~ ' ' ~ d.employee.last_name if d.employee else 'Employé ID:' ~
+                d.employee_id }}</strong> ?
             </p>
             <p class="text-danger">Cette action est irréversible.</p>
           </div>
@@ -213,7 +263,7 @@ async function performSync() {
     </div>
   </div>
   {% endfor %}
-{% endif %}
-{# --- FIN NOUVEAU --- #}
+  {% endif %}
+  {# --- FIN NOUVEAU --- #}
 
-{% endblock %}
+  {% endblock %}

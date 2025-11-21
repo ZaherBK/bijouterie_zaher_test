@@ -71,8 +71,11 @@ app.include_router(deposits_api.router)
 app.include_router(deposits_api.router)
 app.include_router(loans_api.router)
 # --- NOUVEAU: Expenses Router ---
-from .routers import expenses
+# --- NOUVEAU: Expenses Router ---
+from .routers import expenses, sync
 app.include_router(expenses.router)
+app.include_router(sync.router)
+# --- FIN NOUVEAU ---
 # --- FIN NOUVEAU ---
 
 
