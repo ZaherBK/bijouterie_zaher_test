@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  web:
+    build: .
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://neondb_owner:YOUR_PASSWORD@ep-weathered-recipe-agaj3m4t-pooler.c-2.eu-central-1.aws.neon.tech/hrdb?ssl=true"
+      SECRET_KEY: "${SECRET_KEY}"
+      APP_NAME: "Bijouterie Zaher"
+    ports:
+      - "${PORT:-8000}:8000"
+          restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

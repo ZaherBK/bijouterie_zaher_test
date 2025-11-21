@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="page-title"><i class="fa-solid fa-users-cog"></i> Gestion des Utilisateurs</h2> <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+    <i class="fa-solid fa-user-plus"></i> Créer un Utilisateur
+  </button>
+</div>
+
+<div class="card table-card">
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>Nom Complet</th>
+          <th>Email</th>
+          <th>Rôle</th>
+          <th>Magasin</th>
+          <th>Statut</th>
+          <th style="width: 150px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td class="details"><strong>{{ u.full_name }}</strong></td>
+          <td>{{ u.email }}</td>
+          <td>
+            {% if u.permissions %}
+              <span class="badge {% if u.permissions.is_admin %}status-inactive{% else %}action-approve{% endif %}">
+                {{ u.permissions.name }}
+              </span>
+            {% else %}
+              <span class="badge status-inactive">Aucun Rôle</span>
+            {% endif %}
+          </td>
+          <td>{{ u.branch.name if u.branch else '-' }}</td>
+          <td>
+            {% if u.is_active %}
+              <span class="badge status-active">Actif</span>
+            {% else %}
+              <span class="badge status-inactive">Inactif</span>
+            {% endif %}
+          </td>
+          <td>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#editModal-{{ u.id }}">
+              <i class="fa-solid fa-edit"></i>
+            </button>
+            {% if u.id != user.id %} <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ u.id }}">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content card">
+      <form action="{{ url_for('users_create') }}" method="post">
+        <div class_content="modal-header">
+          <h5 class="modal-title" id="createUserModalLabel">Créer un Nouvel Utilisateur</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="background-color: white;"></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group full-width" style="gap: 1rem;">
+            <div class="form-group">
+              <label for="full_name">Nom Complet</label>
+              <input type="text" name="full_name" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" name="email" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="password">Mot de Passe (min 6 caractères)</label>
+              <input type="password" name="password" class="form-control" required minlength="6">
+            </div>
+            
+            <div class="form-group">
+              <label for="role_id">Rôle</label>
+              <select name="role_id" class="form-select" required>
+                <option value="" disabled selected>-- Choisir un rôle --</option>
+                {% for role in roles %}
+                <option value="{{ role.id }}">{{ role.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="branch_id">Magasin (si applicable)</label>
+              <select name="branch_id" class="form-select">
+                <option value="">Aucun</option>
+                {% for branch in branches %}
+                <option value="{{ branch.id }}">{{ branch.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer form-actions">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">Créer Utilisateur</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+{% for u in users %}
+  <div class="modal fade" id="editModal-{{ u.id }}" tabindex="-1" aria-labelledby="editModalLabel-{{ u.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content card">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editModalLabel-{{ u.id }}">Modifier: {{ u.full_name }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="background-color: white;"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-md-7">
+              <h4>Détails du Compte</h4>
+              <form action="{{ url_for('users_update', user_id=u.id) }}" method="post">
+                <div class="form-group full-width" style="gap: 1rem;">
+                  <div class="form-group">
+                    <label for="full_name">Nom Complet</label>
+                    <input type="text" name="full_name" class="form-control" value="{{ u.full_name }}" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" name="email" class="form-control" value="{{ u.email }}" required>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="role_id">Rôle</label>
+                    <select name="role_id" class="form-select" required>
+                      {% for role in roles %}
+                      <option value="{{ role.id }}" {% if u.permissions_id == role.id %}selected{% endif %}>{{ role.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="branch_id">Magasin (si applicable)</label>
+                    <select name="branch_id" class="form-select">
+                      <option value="">Aucun</option>
+                      {% for branch in branches %}
+                      <option value="{{ branch.id }}" {% if u.branch_id == branch.id %}selected{% endif %}>{{ branch.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="is_active" id="is_active-{{ u.id }}" value="true" {% if u.is_active %}checked{% endif %}>
+                    <label class="form-check-label" for="is_active-{{ u.id }}">
+                      Compte Actif
+                    </label>
+                  </div>
+                  <div class="form-actions">
+                    <button type="submit" class="btn btn-primary w-100">Mettre à jour les détails</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+            
+            <div class="col-md-5" style="border-left: var(--border);">
+              <h4>Réinitialiser Mot de Passe</h4>
+              <form action="{{ url_for('users_password', user_id=u.id) }}" method="post">
+                <div class_form-group full-width" style="gap: 1rem;">
+                  <div class="form-group">
+                    <label for="password">Nouveau Mot de Passe</label>
+                    <input type="password" name="password" class="form-control" required minlength="6" placeholder="Nouveau mot de passe">
+                  </div>
+                  <div class="form-actions">
+                    <button type="submit" class="btn btn-danger w-100">Réinitialiser</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="deleteModal-{{ u.id }}" tabindex="-1" aria-labelledby="deleteModalLabel-{{ u.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content card">
+        <form action="{{ url_for('users_delete', user_id=u.id) }}" method="post">
+          <div class="modal-header">
+            <h5 class="modal-title" id="deleteModalLabel-{{ u.id }}">Confirmer la Suppression</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="background-color: white;"></button>
+          </div>
+          <div class="modal-body">
+            <p>Êtes-vous sûr de vouloir supprimer l'utilisateur <strong>{{ u.full_name }}</strong> ({{ u.email }}) ?</p>
+            <p class="text-danger">Cette action est irréversible.</p>
+          </div>
+          <div class="modal-footer form-actions">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+            <button type="submit" class="btn btn-danger">Supprimer Utilisateur</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endfor %}
+
+{% endblock %}

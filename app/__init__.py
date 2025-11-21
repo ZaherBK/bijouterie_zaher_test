@@ -1,0 +1,1 @@
+"""Package marker for the HR Sync application."""

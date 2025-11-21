@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="page-title"><i class="fa-solid fa-hand-holding-dollar"></i> Prêts</h2>
+
+<!-- FORMULAIRE CORRIGÉ: Simplifié pour la nouvelle logique -->
+<div class="card form-card">
+  <form method="post" action="{{ url_for('loans_create_web') }}">
+    <div class="form-row">
+      <div class="form-group">
+    	<label>Employé</label>
+    	<select name="employee_id" class="form-select" required>
+          <option value="" disabled selected>-- Choisir un employé --</option>
+    	  {% for e in employees %}<option value="{{e.id}}">{{e.first_name}} {{e.last_name}}</option>{% endfor %}
+    	</select>
+      </div>
+  	  <div class="form-group"><label>Montant (Crédit)</label><input type="number" step="0.01" name="principal" class="form-control" placeholder="ex: 200" required></div>
+  	  <div class="form-group">
+        <label>Date de Début</label>
+        <input type="date" id="start_date" name="start_date" class="form-control" value="{{ today_date }}" required>
+    </div>
+      <div class="form-group full-width">
+          <label>Motif (Note)</label>
+          <input type="text" name="notes" class="form-control" placeholder="ex: Avance sur salaire, Achat matériel...">
+      </div>
+    </div>
+  	<div class="form-actions" style="margin-top: 1rem;"><button class="btn btn-primary">Créer Crédit</button></div>
+  </form>
+</div>
+
+<!-- TABLEAU CORRIGÉ: Ajout du bouton Supprimer -->
+<div class="card table-card">
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Employé</th>
+          <th>Montant</th>
+          <th>Statut</th>
+          <th>Solde Restant</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in loans %}
+        <tr>
+          <td>{{ l.id }}</td>
+          <td class="details">{{ l.employee.first_name }} {{ l.employee.last_name }}</td>
+          <td class="amount">{{ '%.2f'|format(l.principal) }} TND</td>
+          <td>
+            <span class="badge 
+              {% if l.status.value == 'active' %}action-create
+              {% elif l.status.value == 'paid' %}action-approve
+              {% else %}status-inactive{% endif %}">
+              {{ l.status.value }}
+            </span>
+          </td>
+          <!-- FIX: Correction de l'erreur 'due_total' -->
+          <td class="amount" style="color: var(--gold);">{{ '%.2f'|format(l.principal - l.repaid_total) }} TND</td>
+          <td>
+            <div class="form-actions" style="justify-content: flex-start; gap: 0.5rem;">
+              <a class="btn btn-secondary" href="{{ url_for('loan_detail_page', loan_id=l.id) }}">Détails</a>
+              <!-- NOUVEAU: Bouton Supprimer qui ouvre le modal -->
+              <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteLoanModal-{{ l.id }}">
+                Supprimer
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="no-data">Aucun prêt.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- NOUVEAU: Modals de Suppression (un pour chaque prêt) -->
+{% for l in loans %}
+<div class="modal fade" id="deleteLoanModal-{{ l.id }}" tabindex="-1" aria-labelledby="deleteLoanModalLabel-{{ l.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content card">
+      <form action="{{ url_for('loan_delete_web', loan_id=l.id) }}" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title" id="deleteLoanModalLabel-{{ l.id }}">Confirmer la Suppression</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="background-color: white;"></button>
+        </div>
+        <div class="modal-body">
+          <p>Êtes-vous sûr de vouloir supprimer le prêt #{{ l.id }} de <strong>{{ l.employee.first_name }} {{ l.employee.last_name }}</strong> ?</p>
+          <p class="text-danger"><strong>Cette action est irréversible.</strong></p>
+        </div>
+        <div class="modal-footer form-actions">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-danger">Oui, Supprimer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+

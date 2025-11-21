@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="page-title"><i class="fa-solid fa-users"></i> Gestion des Employés</h2>
+
+<div class="card form-card">
+  <h3><i class="fa-solid fa-user-plus"></i> Ajouter un Nouvel Employé</h3>
+  <form method="post" action="{{ request.url_for('employees_create') }}">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="first_name">Prénom</label>
+        <input type="text" id="first_name" name="first_name" required placeholder="Prénom de l'employé">
+      </div>
+      <div class="form-group">
+        <label for="last_name">Nom</label>
+        <input type="text" id="last_name" name="last_name" required placeholder="Nom de famille">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="cin">N° CIN</label>
+        <input type="text" id="cin" name="cin" placeholder="Numéro de Carte d'Identité" pattern="\d*" title="Doit contenir uniquement des chiffres">
+      </div>
+       <div class="form-group">
+        <label for="position">Poste</label>
+        <input type="text" id="position" name="position" required placeholder="Ex: Vendeur, Gérant, etc.">
+      </div>
+    </div>
+    <div class="form-row">
+      {# --- PERMISSION : Champ Salaire visible par l'admin seulement --- #}
+      {% if user.permissions.is_admin %}
+      <div class="form-group">
+        <label for="salary">Salaire de Base (TND)</label>
+        <input type="text" id="salary" name="salary" placeholder="Ex: 1200.00"
+               pattern="^\d+([.,]\d{1,2})?$"
+               title="Montant positif, ex: 1200 ou 1200.50">
+      </div>
+      {% endif %}
+      <div class="form-group">
+        <label for="branch_id">Magasin</label>
+        {% if (not user.permissions.is_admin) and manager_branch_id %}
+            <input type="hidden" name="branch_id" value="{{ manager_branch_id }}">
+            <p><strong>Magasin :</strong>
+                {% for b in branches %}
+                    {% if b.id == manager_branch_id %} {{ b.name }} ({{ b.city }}) {% endif %}
+                {% endfor %}
+            </p>
+        {% elif user.permissions.is_admin %}
+            <select id="branch_id" name="branch_id" required>
+                <option value="" disabled selected>-- Choisir un magasin --</option>
+                {% for b in branches %}
+                <option value="{{ b.id }}">{{ b.name }} ({{ b.city }})</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-success">
+        <i class="fa-solid fa-plus"></i> Ajouter Employé
+      </button>
+    </div>
+  </form>
+</div>
+
+
+<div class="card table-card">
+    <h3><i class="fa-solid fa-list-ul"></i> Liste des Employés</h3>
+    {% if employees %}
+    <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Prénom</th>
+              <th>Nom</th>
+              <th>N° CIN</th>
+              <th>Poste</th>
+              {# --- PERMISSION : Colonne Salaire visible par l'admin seulement --- #}
+              {% if user.permissions.is_admin %}
+              <th>Salaire (TND)</th>
+              {% endif %}
+              <th>Magasin</th>
+              <th>Statut</th>
+              {# --- PERMISSION : Colonne Actions visible par l'admin seulement --- #}
+              {% if user.permissions.is_admin %}
+              <th>Actions</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in employees %}
+            <tr>
+              <td>{{ e.id }}</td>
+              <td>{{ e.first_name }}</td>
+              <td>{{ e.last_name }}</td>
+              <td>{{ e.cin or '-' }}</td>
+              <td>{{ e.position }}</td>
+              {# --- PERMISSION : Cellule Salaire visible par l'admin seulement --- #}
+              {% if user.permissions.is_admin %}
+              <td class="amount">
+                {% if e.salary %}{{ "%.2f"|format(e.salary|float) }}{% else %}-{% endif %}
+              </td>
+              {% endif %}
+              <td>
+                {% for b in branches %}
+                  {% if b.id == e.branch_id %}
+                    {{ b.name }}
+                  {% endif %}
+                {% endfor %}
+              </td>
+              <td>
+                {% if e.active %}
+                  <span class="badge status-active">Actif</span>
+                {% else %}
+                  <span class="badge status-inactive">Inactif</span>
+                {% endif %}
+              </td>
+              {# --- PERMISSION : Cellule Actions visible par l'admin seulement --- #}
+              {% if user.permissions.is_admin %}
+              <td>
+                <a href="{{ request.url_for('employee_report_index') }}?employee_id={{ e.id }}" class="btn btn-primary btn-sm">
+                  <i class="fa-solid fa-eye"></i> Détails
+                </a>
+                <form method="post" action="{{ request.url_for('employees_delete', employee_id=e.id) }}" style="display:inline;">
+                  <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Supprimer cet employé ?');">
+                    <i class="fa-solid fa-trash"></i> Supprimer
+                  </button>
+                </form>
+              </td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+    </div>
+     {% else %}
+        <p class="no-data">Aucun employé à afficher.</p>
+     {% endif %}
+</div>
+{% endblock %}

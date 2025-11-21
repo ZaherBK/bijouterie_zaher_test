@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2 class="page-title">
+    <i class="fa-solid fa-rocket"></i> Classement des Primes
+  </h2>
+
+  <!-- ===== Sélecteur de Période et Magasin ===== -->
+  <div class="card form-card" style="max-width: 1000px;">
+    <h3><i class="fa-solid fa-calendar-alt"></i> Sélectionner la Période et le Magasin</h3>
+    <form method="get" action="{{ request.url_for('primes_page') }}">
+      <div
+        class="form-row"
+        style="grid-template-columns: 1fr 1fr 1fr 100px; align-items: flex-end;"
+      >
+        <div class="form-group">
+          <label for="start_date">Date Début</label>
+          <input
+            type="date"
+            id="start_date"
+            name="start_date"
+            class="form-control"
+            value="{{ selected_start_date }}"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="end_date">Date Fin</label>
+          <input
+            type="date"
+            id="end_date"
+            name="end_date"
+            class="form-control"
+            value="{{ selected_end_date }}"
+          />
+        </div>
+
+        <!-- Filtre Magasin -->
+        <div class="form-group">
+          <label for="branch_id">Magasin</label>
+          <select id="branch_id" name="branch_id" class="form-select">
+            <!-- 'all' option is only for admins -->
+            {% if user.permissions.is_admin %}
+              <option
+                value="all"
+                {% if selected_branch_id == 'all' or not selected_branch_id %}selected{% endif %}
+              >
+                Tous les Magasins
+              </option>
+            {% endif %}
+            {% for branch in branches %}
+              <option
+                value="{{ branch.id }}"
+                {% if branch.id|string == selected_branch_id %}selected{% endif %}
+              >
+                {{ branch.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-actions" style="margin-bottom: 0.5rem;">
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-filter"></i> Filtrer
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ===== NOUVELLE GRILLE À DEUX COLONNES ===== -->
+  <div class="leaderboard-grid">
+    <!-- ===== Colonne 1: Le Classement ===== -->
+    <div class="leaderboard-container card">
+      <h3 class="leaderboard-title">
+        <i class="fa-solid fa-trophy"></i> Classement des Performances
+      </h3>
+      <p class="hint" style="text-align: center; margin-top: -0.5rem; margin-bottom: 1rem;">
+        Affichage des résultats du <strong>{{ selected_start_date }}</strong>
+        au <strong>{{ selected_end_date }}</strong>
+      </p>
+
+      {% if not sorted_employees or sorted_employees|length == 0 %}
+        <p class="no-data" style="padding: 1rem;">
+          Aucun employé trouvé pour cette période ou ce magasin.
+        </p>
+      {% else %}
+        {% for emp in sorted_employees %}
+          {% set rank = loop.index %}
+          <div
+            class="leaderboard-card {% if rank == 1 %}rank-1{% elif rank == 2 %}rank-2{% elif rank == 3 %}rank-3{% endif %}"
+          >
+            <div class="rank-badge">
+              {% if rank == 1 %}
+                <i class="fa-solid fa-trophy gold"></i>
+              {% elif rank == 2 %}
+                <i class="fa-solid fa-award silver"></i>
+              {% elif rank == 3 %}
+                <i class="fa-solid fa-medal bronze"></i>
+              {% else %}
+                #{{ rank }}
+              {% endif %}
+            </div>
+
+            <div class="employee-info">
+              <span class="name">{{ emp.name }}</span>
+              <div class="stats">
+                <span class="stat-danger">
+                  <i class="fa-regular fa-calendar-xmark"></i>
+                  {{ emp.absences }} Absences
+                </span>
+                <span class="stat-warn">
+                  <i class="fa-solid fa-hand-holding-dollar"></i>
+                  {{ "%.2f"|format(emp.avances) }} TND Avancés
+                </span>
+              </div>
+            </div>
+
+            <div class="score">
+              <span>{{ "%.0f"|format(emp.score) }}</span>
+              <small>Score</small>
+            </div>
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    <!-- ===== Colonne 2: Le Formulaire de Paiement ===== -->
+    <div class="payment-form card ranked-card">
+      <h3><i class="fa-solid fa-gifts"></i> Attribuer les Primes</h3>
+
+      {% if not sorted_employees or sorted_employees|length == 0 %}
+        <p class="no-data" style="padding: 1rem;">
+          Aucun employé à qui attribuer des primes.
+        </p>
+      {% else %}
+        <form method="post" action="{{ url_for('primes_attribuer') }}">
+          <!-- Champs cachés pour conserver les filtres -->
+          <input type="hidden" name="start_date" value="{{ selected_start_date }}" />
+          <input type="hidden" name="end_date" value="{{ selected_end_date }}" />
+          <input type="hidden" name="branch_id" value="{{ selected_branch_id or 'all' }}" />
+
+          <p class="hint">
+            Entrez les montants des primes pour les employés souhaités.
+            Le paiement sera enregistré à la date d'aujourd'hui.
+          </p>
+
+          <!-- Conteneur scrollable pour la liste des employés -->
+          <div class="payment-list-container">
+            {% for emp in sorted_employees %}
+              <div class="payment-row">
+                <label for="prime_{{ emp.id }}">
+                  {{ loop.index }}. {{ emp.name }}
+                </label>
+                <div class="input-group">
+                  <input
+                    type="number"
+                    id="prime_{{ emp.id }}"
+                    name="prime_{{ emp.id }}"
+                    class="form-control"
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                  />
+                  <span class="input-group-text">TND</span>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="form-actions" style="margin-top: 1.5rem;">
+            <button type="submit" class="btn btn-gold">
+              <i class="fa-solid fa-magic-sparkles"></i> Confirmer & Payer les Primes
+            </button>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

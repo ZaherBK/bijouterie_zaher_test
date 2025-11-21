@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{# Accessible seulement par l'admin (vérifié dans main.py) #}
+
+{% block content %}
+<h2 class="page-title"><i class="fa-solid fa-umbrella-beach"></i> Gestion des Congés</h2>
+
+{# Formulaire de demande de congé #}
+<div class="card form-card">
+    <h3><i class="fa-solid fa-plus"></i> Demander un Congé</h3>
+    <form method="post" action="{{ request.url_for('leaves_create') }}">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="employee_id">Employé</label>
+          {# --- FIX: Apply form-select class --- #}
+          <select id="employee_id" name="employee_id" class="form-select" required>
+            <option value="" disabled selected>-- Choisir un employé --</option>
+            {% for e in employees %} {# Admin voit tous les employés actifs #}
+            <option value="{{ e.id }}">{{ e.first_name }} {{ e.last_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+         <div class="form-group">
+          <label for="ltype">Type de Congé</label>
+           {# --- FIX: Apply form-select class --- #}
+          <select id="ltype" name="ltype" class="form-select" required>
+            <option value="paid">Payé</option>
+            <option value="unpaid">Non Payé</option>
+            <option value="sick">Maladie</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="start_date">Date de Début</label>
+           {# --- FIX: Apply form-control class --- #}
+          <input type="date" id="start_date" name="start_date" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="end_date">Date de Fin</label>
+           {# --- FIX: Apply form-control class --- #}
+          <input type="date" id="end_date" name="end_date" class="form-control" required>
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top: 1rem;"> {# Added margin-top #}
+        <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-paper-plane"></i> Soumettre la Demande
+        </button>
+      </div>
+    </form>
+</div>
+
+{# Tableau des demandes de congé #}
+<div class="card table-card" style="margin-top: 1.5rem;"> {# Added margin-top #}
+    <h3><i class="fa-solid fa-list-ul"></i> Demandes de Congé</h3>
+    {% if leaves %}
+    <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Employé</th>
+              <th>Dates</th>
+              <th>Type</th>
+              <th>Statut</th>
+              {# --- FIX: Changed header text --- #}
+              <th>Actions</th>
+            </tr>
+           </thead>
+           <tbody>
+            {% for l in leaves %}
+            <tr>
+              <td>{{ l.id }}</td>
+              <td>
+                {# --- Utiliser la relation chargée --- #}
+                 {% if l.employee %}
+                    {{ l.employee.first_name }} {{ l.employee.last_name }}
+                 {% else %}
+                    Employé ID: {{ l.employee_id }} (Non trouvé)
+                 {% endif %}
+              </td>
+              {# --- FIX: Added timestamp class for consistency --- #}
+              <td class="timestamp">{{ l.start_date.strftime('%Y-%m-%d') }} → {{ l.end_date.strftime('%Y-%m-%d') }}</td>
+              <td>
+                  {% if l.ltype == 'paid' %}<span class="badge ltype-paid">Payé</span>
+                  {% elif l.ltype == 'unpaid' %}<span class="badge ltype-unpaid">Non Payé</span>
+                  {% elif l.ltype == 'sick' %}<span class="badge ltype-sick">Maladie</span>
+                  {% else %}{{ l.ltype }}
+                  {% endif %}
+              </td>
+              <td>
+                {# --- FIX: Improved status badge styling --- #}
+                {% if l.approved %}
+                  <span class="badge action-approve"><i class="fa-solid fa-check"></i> Approuvé</span> {# Use approve style #}
+                {% else %}
+                  <span class="badge status-inactive"><i class="fa-regular fa-clock"></i> En attente</span> {# Use inactive style #}
+                {% endif %}
+              </td>
+              <td>
+                {# --- Container for buttons --- #}
+                <div class="form-actions" style="justify-content: flex-start; gap: 0.5rem;">
+                    {# Bouton Approuver seulement si non approuvé et si user est admin #}
+                    {% if not l.approved and user.permissions.is_admin %}
+                    <form method="post" action="{{ request.url_for('leaves_approve', leave_id=l.id) }}" style="display: inline;">
+                      <button type="submit" class="btn btn-success btn-sm">
+                        <i class="fa-solid fa-thumbs-up"></i> Approuver
+                      </button>
+                    </form>
+                    {% endif %}
+
+                    {# --- NOUVEAU: Bouton Supprimer (Admin seulement) --- #}
+                    {% if user.permissions.is_admin %}
+                     <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteLeaveModal-{{ l.id }}">
+                       Supprimer
+                     </button>
+                    {% endif %}
+                    {# --- FIN NOUVEAU --- #}
+
+                    {# Show '-' if no actions available #}
+                    {% if l.approved and not user.permissions.is_admin %}
+                     -
+                    {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+           </tbody>
+        </table>
+    </div>
+     {# --- Modals moved outside the table card below --- #}
+    {% else %}
+        <p class="no-data" style="padding-top: 1rem;">Aucune demande de congé à afficher.</p> {# Added padding #}
+    {% endif %}
+</div> {# <-- End of card table-card div --> #}
+
+{# --- NOUVEAU: Modals de Confirmation (Admin seulement) --- #}
+{% if user.permissions.is_admin and leaves %} {# Check if user is admin and leaves exist #}
+  {% for l in leaves %}
+  <div class="modal fade" id="deleteLeaveModal-{{ l.id }}" tabindex="-1" aria-labelledby="deleteLeaveModalLabel-{{ l.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content card"> {# Apply card style to modal #}
+        <form action="{{ url_for('leaves_delete', leave_id=l.id) }}" method="POST">
+          <div class="modal-header">
+            <h5 class="modal-title" id="deleteLeaveModalLabel-{{ l.id }}">Confirmer la Suppression</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="background-color: white;"></button>
+          </div>
+          <div class="modal-body">
+            <p>Êtes-vous sûr de vouloir supprimer la demande de congé du
+               <strong>{{ l.start_date.strftime('%Y-%m-%d') }}</strong> au <strong>{{ l.end_date.strftime('%Y-%m-%d') }}</strong> pour
+               <strong>{{ l.employee.first_name ~ ' ' ~ l.employee.last_name if l.employee else 'Employé ID:' ~ l.employee_id }}</strong> ?
+            </p>
+            <p class="text-danger">Cette action est irréversible.</p>
+          </div>
+          <div class="modal-footer form-actions">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+            <button type="submit" class="btn btn-danger">Oui, Supprimer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+{% endif %}
+{# --- FIN NOUVEAU --- #}
+
+{% endblock %}

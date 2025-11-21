@@ -1,0 +1,1399 @@
+/* =========================================================
+    AURORA LUXE v2.1 — Neon Glass + High Contrast (by Zaher)
+    ========================================================= */
+/* Aurora Luxe v2.1 — © 2025 Zaher BK. Licensed under the MIT License. */
+
+/* ---------- Reset ---------- */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+/* ---------- Tokens ---------- */
+:root{
+  /* Surfaces */
+  --bg: #0b0f16;
+  --bg-soft: #121827;
+  --bg-elev: #161d2e;
+
+  /* Text */
+  --text: #eef3fb;        /* high-contrast text */
+  --muted: #aeb8cc;
+  --placeholder: #a9b3d6;
+
+  /* Brand */
+  --accent-1: #7c5cff;
+  --accent-2: #21d4fd;
+  --gold: #d4af37;
+
+  /* Status */
+  --ok: #22c55e; --warn:#f59e0b; --danger:#ef4444; --info:#38bdf8;
+
+  /* Effects */
+  --ring: 0 0 0 3px rgba(124,92,255,.32);
+  --glass: rgba(255,255,255,.08);
+  --glass-2: rgba(255,255,255,.12);
+  --border: 1px solid rgba(255,255,255,.10);
+  --shadow-1: 0 6px 20px rgba(0,0,0,.35);
+  --shadow-2: 0 18px 40px rgba(0,0,0,.45);
+
+  /* Radii */
+  --r-10: 10px; --r-12: 12px; --r-16: 16px; --r-20: 20px;
+
+  /* Tables */
+  --row-stripe: rgba(255,255,255,.05);
+  --row-hover: rgba(124,92,255,.12);
+
+  --nav-h: 56px;
+}
+
+/* =========================================================
+   AURORA LUXE — LIGHT MODE (Final Overrides)
+   Paste below and remove old html[data-theme='light'] blocks
+   ========================================================= */
+
+html[data-theme='light']{
+  /* Palette */
+  --bg: #eff3f9;
+  --bg-soft: #ffffff;
+  --bg-elev: #ffffff;
+
+  --text: #0b1220;
+  --muted: #667085;
+  --placeholder: #8a94a8;
+
+  --accent-1: #7c5cff;
+  --accent-2: #21d4fd;
+  --gold: #d4af37;
+
+  --ring: 0 0 0 3px rgba(124,92,255,.28);
+  --glass: rgba(0,0,0,.03);
+  --glass-2: rgba(0,0,0,.06);
+  --border: 1px solid rgba(16,24,40,.10);
+  --shadow-1: 0 8px 20px rgba(16,24,40,.08);
+  --shadow-2: 0 18px 42px rgba(16,24,40,.12);
+
+  --row-stripe: rgba(16,24,40,.03);
+  --row-hover: rgba(124,92,255,.08);
+}
+
+/* Global background */
+html[data-theme='light'] body{
+  color: var(--text);
+  background:
+    radial-gradient(1100px 700px at -15% -20%, rgba(124,92,255,.08), transparent 55%),
+    radial-gradient(1000px 750px at 120% 0%,  rgba(33,212,253,.08),  transparent 55%),
+    radial-gradient(700px 550px  at 50% 120%,  rgba(212,175,55,.06), transparent 55%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* Navbar */
+html[data-theme='light'] .navbar{
+  background: linear-gradient(90deg, rgba(255,255,255,.95), rgba(255,255,255,.88));
+  border-bottom: var(--border);
+  backdrop-filter: blur(8px);
+}
+html[data-theme='light'] .navbar .nav-link{ color: var(--muted); }
+
+/* Sidebar */
+html[data-theme='light'] .sidebar{
+  background: linear-gradient(180deg, #ffffff, #f7f9fc);
+  border-right: var(--border);
+}
+html[data-theme='light'] .sidebar .nav-link{ color:#49566a; }
+html[data-theme='light'] .sidebar .nav-link:hover{
+  color:#111827;
+  background: linear-gradient(90deg, rgba(124,92,255,.18), rgba(33,212,253,.12));
+  box-shadow: inset 0 0 0 1px rgba(124,92,255,.35), 0 10px 22px rgba(124,92,255,.18);
+}
+html[data-theme='light'] .sidebar .nav-link.active{
+  color:#0b1220;
+  background: linear-gradient(90deg, rgba(124,92,255,.22), rgba(33,212,253,.16));
+  box-shadow: inset 0 0 0 1px rgba(124,92,255,.45), 0 10px 22px rgba(124,92,255,.22);
+}
+
+/* Cards / Sections */
+html[data-theme='light'] .card,
+html[data-theme='light'] .form-card,
+html[data-theme='light'] .table-card{
+  background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.96));
+  border: var(--border);
+  box-shadow: var(--shadow-1);
+  color: var(--text);
+}
+html[data-theme='light'] .page-title{
+  background: linear-gradient(90deg, #111827, #3b82f6 70%);
+  -webkit-background-clip:text; color:transparent;
+  text-shadow:none;
+}
+html[data-theme='light'] .card h3{
+  background: linear-gradient(90deg, #7c5cff, #21d4fd 70%);
+  -webkit-background-clip:text; color:transparent;
+  text-shadow: 0 2px 10px rgba(124,92,255,.25);
+}
+
+/* Forms */
+html[data-theme='light'] label{ color:#243147; }
+
+html[data-theme='light'] [type="text"],
+html[data-theme='light'] [type="date"],
+html[data-theme='light'] [type="number"],
+html[data-theme='light'] [type="password"],
+html[data-theme='light'] .form-control,
+html[data-theme='light'] select,
+html[data-theme='light'] .form-select{
+  background: linear-gradient(180deg, #f7f9fd, #eef3fb);
+  border: 1px solid #d5dbea;
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+}
+
+html[data-theme='light'] input::placeholder,
+html[data-theme='light'] textarea::placeholder,
+html[data-theme='light'] .form-control::placeholder,
+html[data-theme='light'] .form-select::placeholder{
+  color: var(--placeholder) !important;
+  opacity: 1 !important;
+}
+/* vendor fallbacks */
+html[data-theme='light'] ::-webkit-input-placeholder{ color: var(--placeholder) !important; opacity:1 !important; }
+html[data-theme='light'] :-ms-input-placeholder     { color: var(--placeholder) !important; }
+html[data-theme='light'] ::-ms-input-placeholder    { color: var(--placeholder) !important; }
+html[data-theme='light'] ::-moz-placeholder         { color: var(--placeholder) !important; opacity:1 !important; }
+
+html[data-theme='light'] input:focus,
+html[data-theme='light'] select:focus,
+html[data-theme='light'] .form-control:focus,
+html[data-theme='light'] .form-select:focus{
+  outline: none;
+  border-color: #c4ccea;
+  box-shadow: 0 0 0 4px rgba(124,92,255,.22);
+
+  color: #0b1220 !important;
+  -webkit-text-fill-color: #0b1220;
+  caret-color: #0b1220;
+
+  background: linear-gradient(180deg, #f7f9fd, #eef3fb) !important;
+  background-color: #ffffff !important;
+  transition: none !important;
+  filter: none !important;
+}
+
+/* Select text & popup options */
+html[data-theme='light'] select,
+html[data-theme='light'] .form-select{
+  color:#0b1220 !important;
+}
+html[data-theme='light'] select option,
+html[data-theme='light'] .form-select option{
+  background:#ffffff !important;
+  color:#0b1220 !important;
+}
+html[data-theme='light'] select option[disabled],
+html[data-theme='light'] .form-select option[disabled]{ color:#8a94a8 !important; }
+
+/* Buttons */
+html[data-theme='light'] .btn-primary{ color:#fff;     background: linear-gradient(180deg, #7c5cff, #5e3efe); }
+html[data-theme='light'] .btn-secondary{ color:#0b1220; background: linear-gradient(180deg, #e6eaf5, #d8deee); }
+html[data-theme='light'] .btn-success{ color:#05210f;  background: linear-gradient(180deg, #22c55e, #16a34a); }
+html[data-theme='light'] .btn-danger{  color:#fff;     background: linear-gradient(180deg, #ef4444, #b91c1c); }
+html[data-theme='light'] .btn-gold{    color:#0b1220;  background: linear-gradient(180deg, #ffd86f, #d4af37); box-shadow: 0 10px 24px rgba(212,175,55,.28); }
+
+/* Tables */
+html[data-theme='light'] thead th{
+  color:#44506a;
+  background: rgba(16,24,40,.04);
+}
+html[data-theme='light'] tbody td{ border-top: 1px solid rgba(16,24,40,.08); }
+html[data-theme='light'] tbody tr:nth-child(odd){ background: var(--row-stripe); }
+html[data-theme='light'] tbody tr:hover{ background: var(--row-hover); }
+html[data-theme='light'] td.details{
+  color:#374151;
+  text-shadow: 0 0 6px rgba(124,92,255,.15);
+}
+
+/* Badges (base + variants) */
+html[data-theme='light'] .badge{
+  display:inline-flex; align-items:center; gap:.35rem;
+  padding:.35rem .6rem; border-radius:999px; font-size:.75rem; font-weight:800; letter-spacing:.02em;
+  border:1px solid rgba(16,24,40,.10);
+  backdrop-filter: blur(2px);
+  background: rgba(0,0,0,.03);
+  color:#111827;
+  box-shadow: 0 0 10px rgba(124,92,255,.12);
+}
+html[data-theme='light'] .action-create  { background: rgba(34,197,94,.15);  color:#065f46; }
+html[data-theme='light'] .action-approve { background: rgba(56,189,248,.15); color:#075985; }
+html[data-theme='light'] .action-pay     { background: rgba(124,92,255,.18); color:#4230b8; }
+html[data-theme='light'] .action-leave   { background: rgba(245,158,11,.18); color:#92400e; }
+html[data-theme='light'] .action-deposit { background: rgba(33,212,253,.15); color:#075985; }
+html[data-theme='light'] .ltype-paid     { background: rgba(34,197,94,.12);  color:#065f46; }
+html[data-theme='light'] .ltype-unpaid   { background: rgba(239,68,68,.12);  color:#7f1d1d; }
+html[data-theme='light'] .ltype-sick     { background: rgba(56,189,248,.12); color:#075985; }
+html[data-theme='light'] .status-inactive{ background: rgba(148,163,184,.15); color:#374151; }
+html[data-theme='light'] .action-delete{
+  background: rgba(239,68,68,.12) !important;
+  color: #7f1d1d !important;
+}
+
+/* Alerts / Empty */
+html[data-theme='light'] .alert{
+  background: rgba(239,68,68,.10);
+  border: 1px solid rgba(239,68,68,.35);
+  color: #7f1d1d;
+}
+html[data-theme='light'] .no-data{ color:#6b7280; }
+
+/* Quick links */
+html[data-theme='light'] .quick-links .link-buttons .btn{
+  box-shadow: 0 6px 20px rgba(16,24,40,.08);
+}
+html[data-theme='light'] .quick-links .link-buttons .btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 16px 36px rgba(16,24,40,.14);
+}
+
+/* Theme toggle */
+html[data-theme='light'] .theme-toggle{
+  background: linear-gradient(180deg, rgba(0,0,0,.06), rgba(0,0,0,.04));
+  color:#111827;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
+}
+
+html[data-theme='light'] td.timestamp{ color:#3e79ff; font-variant-numeric: tabular-nums; }
+
+html[data-theme='light'] .employee-details p {
+    color: #6f7b9b;
+    margin-bottom: .6rem;
+}
+
+
+/* =======================================================
+   LIGHT MODE — Summary Box Styling (Aurora Luxe Adapted)
+   ======================================================= 
+html[data-theme='light'] .summary-box {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: linear-gradient(180deg, #ffffff, #f9fafb);
+  border: 1px solid rgba(16, 24, 40, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(16, 24, 40, 0.05);
+}
+
+html[data-theme='light'] .summary-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0b1220;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid rgba(16, 24, 40, 0.1);
+  margin-bottom: 1rem;
+  background: linear-gradient(90deg, #7c5cff, #21d4fd 70%);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+html[data-theme='light'] .summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+html[data-theme='light'] .summary-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.92rem;
+  color: #4b5563;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px dashed rgba(16, 24, 40, 0.1);
+  transition: background 0.3s ease;
+}
+
+html[data-theme='light'] .summary-list li:hover {
+  background: rgba(124, 92, 255, 0.05);
+}
+
+html[data-theme='light'] .summary-list li:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+html[data-theme='light'] .summary-list li span:first-child {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+html[data-theme='light'] .summary-list li .amount {
+  font-weight: 600;
+  color: #0b1220;
+}
+
+html[data-theme='light'] .summary-list li .amount-success {
+  font-weight: 600;
+  color: #15803d;
+}
+
+html[data-theme='light'] .summary-list li .amount-danger {
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+html[data-theme='light'] .summary-list li .amount-warning {
+  font-weight: 600;
+  color: #a16207;
+}
+
+html[data-theme='light'] .summary-list li .amount-muted {
+  font-weight: 600;
+  color: #6b7280;
+}
+*/
+/* --- Icons --- */
+html[data-theme='light'] .summary-list li .icon-blue { color: #2563eb; }
+html[data-theme='light'] .summary-list li .icon-red { color: #dc2626; }
+html[data-theme='light'] .summary-list li .icon-green { color: #16a34a; }
+html[data-theme='light'] .summary-list li .icon-yellow { color: #ca8a04; }
+html[data-theme='light'] .summary-list li .icon-purple { color: #7c3aed; }
+
+
+/* ===== LUXE TABS — LIGHT MODE ===== */
+html[data-theme='light'] .luxe-tabs { margin-left: 0; margin-right: 0; }
+
+html[data-theme='light'] .luxe-tabs .tab-link{
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .6rem 1.3rem;
+  border-radius: 14px;
+  /* خلفية فاتحة بنَفَس البراند */
+  background: linear-gradient(135deg, rgba(124,92,255,.12), rgba(33,212,253,.08));
+  /* حدود أفتح تناسب اللايت */
+  border: 1px solid rgba(16,24,40,.10);
+  color: #0b1220;                 /* نص داكن واضح */
+  text-decoration: none;
+  font-weight: 600;
+  transition: all .25s ease;
+  /* ظل داخلي خفي */
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.6);
+}
+
+html[data-theme='light'] .luxe-tabs .tab-link:hover{
+  background: linear-gradient(135deg, rgba(124,92,255,.22), rgba(33,212,253,.16));
+  color: #0b1220;
+  transform: translateY(-2px);
+  /* ظل لطيف يناسب اللايت */
+  box-shadow: 0 6px 18px rgba(16,24,40,.10);
+}
+
+html[data-theme='light'] .luxe-tabs .tab-link:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(124,92,255,.22);
+}
+
+/* الحالة النشطة */
+html[data-theme='light'] .luxe-tabs .tab-link.active{
+  background: linear-gradient(135deg, #7c5cff, #5e3efe);
+  color: #fff;
+  border-color: rgba(124,92,255,.5);
+  box-shadow: 0 8px 22px rgba(124,92,255,.35);
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+/* (اختياري) أيقونات داخل التاب تكون أوضح */
+html[data-theme='light'] .luxe-tabs .tab-link i{
+  opacity: .95;
+}
+
+/* ===== SECTION TITLE — LIGHT MODE ===== */
+html[data-theme='light'] .section-title {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin: 0;
+  padding: .9rem 1rem;
+  font-size: 1.05rem;
+  color: #0b1220; /* نص داكن وواضح */
+  border-bottom: 1px solid rgba(16, 24, 40, .10); /* حدود خفيفة */
+  background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(245,247,250,.85));
+  backdrop-filter: blur(4px);
+  border-radius: 8px 8px 0 0;
+  font-weight: 600;
+  box-shadow: 0 3px 8px rgba(16,24,40,.06);
+}
+
+/* أيقونة العنوان */
+html[data-theme='light'] .section-title i {
+  width: 22px;
+  text-align: center;
+  opacity: .85;
+  color: #7c5cff; /* لون بنفسجي هادي */
+}
+
+/* تأثير عند المرور */
+html[data-theme='light'] .section-title:hover {
+  background: linear-gradient(180deg, rgba(124,92,255,.08), rgba(33,212,253,.06));
+  box-shadow: 0 4px 12px rgba(124,92,255,.12);
+  transition: all .25s ease;
+}
+
+
+/* ---------- Background FX ---------- */
+body{
+  color: var(--text);
+  background:
+    radial-gradient(950px 600px at -15% -20%, rgba(124,92,255,.18), transparent 50%),
+    radial-gradient(900px 700px at 120% 0%, rgba(33,212,253,.18), transparent 45%),
+    radial-gradient(650px 500px at 50% 120%, rgba(212,175,55,.14), transparent 50%),
+    var(--bg);
+  background-attachment: fixed;
+  font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  animation: auroraShift 20s ease-in-out infinite;
+}
+@keyframes auroraShift{
+  0%{ background-position: 0 0, 0 0, 0 0, 0 0; }
+  50%{ background-position: 8% -4%, 110% -6%, 50% 115%, 0 0; }
+  100%{ background-position: 0 0, 0 0, 0 0, 0 0; }
+}
+
+/* ---------- Navbar ---------- */
+.navbar{
+  background: linear-gradient(90deg, rgba(18,23,39,.78), rgba(18,23,39,.42));
+  border-bottom: var(--border);
+  backdrop-filter: blur(10px);
+}
+.navbar .navbar-brand{ color:var(--text); font-weight:800; letter-spacing:.3px; display:flex; gap:.6rem; align-items:center; }
+.navbar .navbar-brand img{ height:28px; filter: drop-shadow(0 2px 8px rgba(0,0,0,.4)); }
+.navbar .nav-link{ color:var(--muted); }
+.navbar .nav-link:hover{ color:var(--text); }
+
+/* ---------- Layout ---------- */
+.container-fluid>.row{ min-height:100vh; }
+.main-content{ padding: 96px 24px 32px; }
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  top:56px; height:calc(100vh - 56px);
+  background: linear-gradient(180deg, rgba(18,23,39,.95), rgba(18,23,39,.88));
+  border-right: var(--border);
+  padding-top:1rem;
+}
+.sidebar-heading{
+  font-size:.75rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
+  padding:.5rem 1rem; margin-top:.75rem;
+}
+.sidebar .nav-link{
+  display:flex; align-items:center; gap:.65rem;
+  color:var(--muted); margin:.15rem .75rem; padding:.65rem 1rem; border-radius: 12px;
+  transition: transform .06s ease, box-shadow .25s ease, color .2s ease, background .2s ease;
+}
+.sidebar .nav-link .bi{ width:20px; text-align:center; font-size:1.1rem; }
+.sidebar .nav-link:hover{ transform: translateY(-1px); color:var(--text); background: rgba(124,92,255,.12); box-shadow: var(--shadow-1); }
+.sidebar .nav-link.active{
+  color:#fff;
+  background: linear-gradient(90deg, rgba(124,92,255,.24), rgba(33,212,253,.18));
+  box-shadow: inset 0 0 0 1px rgba(124,92,255,.50), 0 10px 22px rgba(124,92,255,.25);
+}
+
+/* ---------- Cards (Glass) ---------- */
+.card, .form-card, .table-card{
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+  border: var(--border);
+  border-radius: var(--r-20);
+  box-shadow: var(--shadow-1);
+  padding: 1.1rem 1.25rem; margin: 1rem 0;
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+}
+.card h3{ margin:.25rem 0 1rem 0; font-size:1.05rem; color:#e3ebff; }
+
+/* “Ranked” halo edge */
+.ranked-card{ position:relative; overflow:hidden; }
+.ranked-card::before{
+  content:""; position:absolute; inset:-2px; z-index:-1;
+  background: conic-gradient(from 210deg, var(--accent-1), var(--accent-2), var(--gold), var(--accent-1));
+  filter: blur(14px); opacity:.33;
+}
+
+/* ---------- Page Title ---------- */
+.page-title{
+  display:flex; align-items:center; gap:.7rem;
+  font-weight:900; letter-spacing:.4px; margin:0 0 1rem;
+  background: linear-gradient(90deg, #fff, #d5def5 70%); -webkit-background-clip:text; color:transparent;
+  text-shadow: 0 8px 30px rgba(124,92,255,.35);
+}
+
+/* ---------- Buttons ---------- */
+.btn{
+  border:none; border-radius: 14px; font-weight:800; letter-spacing:.2px;
+  padding:.7rem 1rem; cursor:pointer;
+  transition: transform .06s ease, box-shadow .25s ease, background .25s ease;
+}
+.btn:focus{ outline:none; box-shadow: var(--ring); }
+.btn-primary{ color:#fff; background: linear-gradient(180deg, #7c5cff, #5e3efe); }
+.btn-secondary{ color:#f0f3fb; background: linear-gradient(180deg, #2a3043, #1f2536); }
+.btn-success{ color:#06150b; background: linear-gradient(180deg, #22c55e, #16a34a); }
+.btn-danger{ color:#fff; background: linear-gradient(180deg, #ef4444, #b91c1c); }
+.btn-gold{ color:#0e0f16; background: linear-gradient(180deg, #ffd86f, #d4af37); box-shadow: 0 10px 24px rgba(212,175,55,.35); }
+.btn:hover{ transform: translateY(-1px); box-shadow: var(--shadow-2); }
+.quick-links .link-buttons{ display:flex; flex-wrap:wrap; gap:.6rem; }
+
+/* ---------- Forms (High-contrast) ---------- */
+label{ color:#d9e2f7; font-size:.95rem; }
+.form-row{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:1rem; }
+.form-group{ display:flex; flex-direction:column; gap:.4rem; }
+.form-group.full-width{ grid-column:1/-1 }
+
+/* fields */
+input[type="text"], input[type="date"], input[type="number"], input[type="password"], select,
+.form-control, .form-select{
+  width:100%; padding:.8rem 1rem; border-radius: 12px;
+  border: 1px solid rgba(210, 180, 255, 0.3); /* أنعم لون */
+  background: linear-gradient(180deg, #222b44, #1b2236); /* تدرج أنيق */
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+  transition: background-color 0s, color 0s, box-shadow .25s ease; /* لا تغيّر اللون */
+
+}
+/* Placeholder brighter */
+::placeholder{ color: var(--placeholder); }
+
+input::placeholder,
+textarea::placeholder,
+.form-control::placeholder {
+  color: #a9b3d6 !important;
+  opacity: 1 !important;
+}
+
+input:focus,
+select:focus,
+.form-control:focus,
+.form-select:focus {
+    outline: none;
+    box-shadow: var(--ring);
+    border-color: rgba(186, 158, 255, 0.8);
+    
+    /* 👇 إضافات مهمة لحل مشكلة عدم ظهور النص أثناء الكتابة */
+    color: var(--text) !important;       /* يثبّت لون النص داخل الحقل */
+    -webkit-text-fill-color: var(--text);/* لإجبار كروم/إيدج */
+    caret-color: var(--text);            /* لون المؤشر */
+    
+    /* 👇 يمنع تغيير لون الخلفية عند الكتابة */
+    background: linear-gradient(180deg, #1c2540, #182238) !important;
+    background-color: transparent !important;
+    transition: box-shadow .15s ease-in-out, border-color .15s ease-in-out;
+    filter: none !important;                /* يلغى أي تأثير يجي من Bootstrap/المتصفح */
+}
+
+.form-actions{ display:flex; gap:.6rem; justify-content:flex-end; }
+
+input:-webkit-autofill {
+  -webkit-text-fill-color: var(--text) !important;
+  -webkit-box-shadow: 0 0 0 1000px #2b3a65f2 inset !important;
+}
+
+/* === Select dropdown FIX (better contrast across browsers) === */
+select, .form-select { color: #f8faff !important; }        /* forces dark popup on Chromium */
+select option, .form-select option{
+  background:#272b45; color:var(--text);
+}
+select option[disabled]{ color:var(--muted); }
+
+/* Employee details contrast */
+.employee-details p{ color:#e9efff; margin-bottom: .6rem; } /* Added margin */
+.employee-details strong{ color:#cfd9ff; }
+
+/* ---------- Tables ---------- */
+.table-responsive{ overflow:auto; border-radius:14px; border:var(--border); }
+table{ width:100%; border-collapse:separate; border-spacing:0; color: var(--text); }
+thead th{
+  position: sticky; top:0; padding:.9rem .9rem;
+  font-size:.78rem; letter-spacing:.06em; text-transform:uppercase;
+  color:#bdc9e5; background: rgba(255,255,255,.10); backdrop-filter: blur(6px);
+}
+tbody td{ padding:.85rem .9rem; border-top:1px solid rgba(255,255,255,.12); }
+tbody tr:nth-child(odd){ background: var(--row-stripe); }
+tbody tr:hover{ background: var(--row-hover); }
+td.details{ color:#e1e9ff; }
+td.timestamp{ color:#aeb9d2; font-variant-numeric: tabular-nums; }
+td.amount{ font-weight:800; }
+
+/* ---------- Badges ---------- */
+.badge{
+  display:inline-flex; align-items:center; gap:.35rem;
+  padding:.35rem .6rem; border-radius:999px; font-size:.75rem; font-weight:800; letter-spacing:.02em;
+  border:1px solid rgba(255,255,255,.18); backdrop-filter: blur(4px);
+}
+.action-create{ background: rgba(34,197,94,.2); color:#a9f5ca; }
+.action-approve{ background: rgba(56,189,248,.2); color:#c9ecff; }
+.action-pay{ background: rgba(124,92,255,.25); color:#e6dbff; }
+.action-leave{ background: rgba(245,158,11,.22); color:#ffe0a8; }
+.action-deposit{ background: rgba(33,212,253,.2); color:#d2f7ff; }
+.ltype-paid{ background: rgba(34,197,94,.23); color:#b3f7d1; }
+.ltype-unpaid{ background: rgba(239,68,68,.26); color:#ffd0d0; }
+.ltype-sick{ background: rgba(56,189,248,.24); color:#d9f3ff; }
+.status-inactive{background: rgba(148,163,184,.20); color:#b6c5d9; } /* Custom for loan status */
+
+/* ---------- Alerts & Empty ---------- */
+.alert{ border-radius:12px; border:var(--border); background: rgba(239,68,68,.14); color:#ffe0e0; padding:.9rem 1rem; }
+.no-data{ color: var(--muted); padding:.8rem; }
+
+/* ---------- Login ---------- */
+.login-container{
+  min-height:100vh; display:grid; grid-template-columns: 1fr; gap:0;
+  background:
+    radial-gradient(800px 600px at 90% 0%, rgba(33,212,253,.16), transparent 45%),
+    radial-gradient(700px 600px at 10% 10%, rgba(124,92,255,.18), transparent 45%),
+    var(--bg);
+}
+.login-wrap{ display:grid; grid-template-columns: 1fr; place-items:center; padding: 32px 16px; }
+.login-card{
+  width:min(460px, 92vw);
+  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.08));
+  border: var(--border); border-radius: 18px; box-shadow: var(--shadow-2);
+  padding: 1.5rem;
+}
+.login-logo{ height:52px; margin-bottom:.25rem; }
+.login-sub{ color: var(--muted); }
+
+@media (min-width: 992px){
+  .login-container{ grid-template-columns: 1.1fr .9fr; }
+  .login-hero{
+    display:block; height:100%; position:relative; overflow:hidden;
+    background:
+      radial-gradient(1200px 800px at -10% 110%, rgba(212,175,55,.22), transparent 55%),
+      linear-gradient(180deg, #0d1220, #0b101a);
+    border-right: var(--border);
+  }
+  .login-hero::after{
+    content:""; position:absolute; inset:12% 10% 12% 10%; border-radius: 28px;
+    background: radial-gradient(500px 300px at 25% 25%, rgba(124,92,255,.25), transparent 40%),
+                radial-gradient(500px 300px at 70% 70%, rgba(33,212,253,.25), transparent 45%),
+                linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.07);
+  }
+}
+
+/* ---------- Utilities ---------- */
+.hint{ color:var(--muted); font-size:.92rem; }
+.mt-2{ margin-top:.5rem; }
+.w-100{ width:100%; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 992px){
+  .form-row{ grid-template-columns:1fr; }
+  .main-content{ padding: 92px 16px 28px; }
+  .sidebar{ height:auto; }
+}
+
+/* Keep Bootstrap table rounding compatibility */
+.table{ border-radius: 12px; overflow:hidden; }
+
+/* Add glow around active tab link */
+.tab-link.active {
+  box-shadow: 0 0 15px rgba(124,92,255,.45);
+}
+
+/* Slight gold accent for detail titles */
+.employee-details p strong {
+  color: var(--gold);
+  text-shadow: 0 0 6px rgba(212,175,55,.25);
+}
+
+/* ---------- LUXE TABS STYLE (Aurora Edition) ---------- */
+.luxe-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .7rem;
+  margin: 1.2rem 0;
+}
+
+.luxe-tabs .tab-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .6rem 1.3rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(124,92,255,.15), rgba(33,212,253,.10));
+  border: 1px solid rgba(255,255,255,.14);
+  color: #dce3ff;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all .25s ease;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+}
+.luxe-tabs { margin-left: 0; margin-right: 0; }
+.luxe-tabs .tab-link:hover {
+  background: linear-gradient(135deg, rgba(124,92,255,.25), rgba(33,212,253,.18));
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(124,92,255,.3);
+}
+
+.luxe-tabs .tab-link.active {
+  background: linear-gradient(135deg, #7c5cff, #5e3efe);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(124,92,255,.45);
+  border-color: rgba(124,92,255,.5);
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%,100% { box-shadow: 0 0 12px rgba(124,92,255,.4); }
+  50% { box-shadow: 0 0 26px rgba(124,92,255,.8); }
+}
+
+.tabs-luxe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .7rem;
+  margin: 1rem 0;
+}
+
+
+
+.tab-link {
+  background: linear-gradient(135deg, rgba(124,92,255,.15), rgba(33,212,253,.10));
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 14px;
+  color: #d8e1ff;
+  padding: .6rem 1.2rem;
+  font-weight: 600;
+  letter-spacing: .2px;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  text-decoration: none;
+  transition: all .25s ease;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+}
+
+.tab-link:hover {
+  background: linear-gradient(135deg, rgba(124,92,255,.25), rgba(33,212,253,.18));
+  transform: translateY(-2px);
+  color: #fff;
+}
+
+.tab-link.active {
+  background: linear-gradient(135deg, #7c5cff, #5e3efe);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(124,92,255,.45);
+  border-color: rgba(124,92,255,.5);
+}
+
+/* ===== Report sections: perfect alignment ===== */
+
+/* نلغي padding الداخلي للكارد داخل التبويب، ونبني هيدر/بودي متناسقين */
+.tab-content.card {
+  padding: 0;                /* مهم: يمنع اختلاف بدايات الجداول */
+  border-radius: 16px;
+  overflow: hidden;          /* حتى الزوايا تتقص بطريقة نظيفة */
+}
+
+/* عنوان القسم موحد */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin: 0;                 /* يمنع إزاحة اليسار */
+  padding: .9rem 1rem;
+  font-size: 1.05rem;
+  color: #e9eeff;
+  border-bottom: var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+  backdrop-filter: blur(6px);
+}
+
+/* عرض ثابت للأيقونة حتى كل العناوين تصطف على نفس السطر */
+.section-title i {
+  width: 22px;
+  text-align: center;
+  opacity: .95;
+}
+
+/* جسم القسم: الجدول */
+.section-body {
+  padding: 0;                /* لا padding هنا—الجدول يملأ العرض */
+}
+
+/* جدول موحَّد الحواف داخل الكارد */
+.section-body .table-responsive {
+  border: none;              /* اعتمدنا حد الكارد نفسه */
+  border-radius: 0;          /* لا زوايا؛ لأنها مأخوذة من الكارد */
+}
+
+/* رأس الجدول يبقى لاصق وبلون موحد */
+.section-body thead th {
+  background: rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
+
+/* توحيد الهوامش أعلى كل تبويب */
+.tab-content + .tab-content { margin-top: 1.2rem; }
+
+/* إن حبيت تزيد هوامش خارجية عامة تحت التبويب */
+.tab-content.card:not(.active) { display: none; }
+.tab-content.card.active { display: block; }
+
+/* Theme toggle button */
+.theme-toggle{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:34px; height:34px; border-radius:10px; border:none; cursor:pointer;
+  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+}
+.theme-toggle:hover{ transform: translateY(-1px); box-shadow: var(--shadow-1); }
+
+/* =========================================
+   FIX: Modal Button Clickability Issue
+   ========================================= */
+
+/* Ensure modal content is above backdrop */
+.modal-content {
+  z-index: 1060; /* Increased z-index */
+  position: relative;
+}
+
+/* Ensure modal footer and buttons inside are clickable */
+.modal-footer {
+  position: relative; /* Make sure footer establishes stacking context */
+  z-index: 1061; /* Higher than modal-content */
+}
+
+.modal-footer .btn {
+  pointer-events: auto !important; /* Force enable click/hover events */
+  z-index: 1062; /* Ensure buttons are highest */
+  position: relative;
+}
+
+/* Explicitly set backdrop z-index */
+.modal-backdrop {
+   z-index: 1050; /* Default Bootstrap backdrop z-index */
+}
+
+
+.summary-box {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background-color: #f9fafb; /* Light grey */
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+}
+
+.summary-title {
+    font-size: 1.125rem; /* 18px */
+    font-weight: 600;
+    color: var(--text-color, #1f2937);
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--border-color, #e2e8f0);
+    margin-bottom: 1rem;
+}
+
+.summary-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.summary-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    color: var(--text-color-light, #4b5563);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px dashed var(--border-color, #e2e8f0);
+}
+.summary-list li:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.summary-list li span:first-child {
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.summary-list li .amount {
+    font-weight: 600;
+    color: var(--text-color, #1f2937);
+}
+.summary-list li .amount-success {
+    font-weight: 600;
+    color: var(--success-dark, #15803d);
+}
+.summary-list li .amount-danger {
+    font-weight: 600;
+    color: var(--danger-dark, #b91c1c);
+}
+.summary-list li .amount-warning {
+    font-weight: 600;
+    color: var(--gold-dark, #a16207);
+}
+.summary-list li .amount-muted {
+    font-weight: 600;
+    color: #6b7280; /* gray-500 */
+}
+
+/* Icons */
+.summary-list li .icon-blue { color: #3b82f6; } /* blue-500 */
+.summary-list li .icon-red { color: #ef4444; } /* red-500 */
+.summary-list li .icon-green { color: #22c55e; } /* green-500 */
+.summary-list li .icon-yellow { color: #eab308; } /* yellow-500 */
+.summary-list li .icon-purple { color: #a855f7; } /* purple-500 */
+
+
+/* اجعل محتوى السايدبار لاصق لكن أسفل شوية من النافبار */
+.sidebar-sticky {
+  position: sticky;
+  top: calc(var(--nav-h) + 16px);            /* مسافة من أعلى الشاشة (النافبار ~56px + 16px مارجن) */
+  padding-bottom: 16px; /* علشان آخر زر ما يختفي تحت الحافة */
+}
+
+/* لو السايدبار طولها ثابت، فعّل سكرول داخلي علشان كل العناصر تبان */
+.sidebar {
+  overflow: auto; /* يضمن إن الأزرار اللي تحت تقدر توصلها */
+}
+
+/* على الشاشات الصغيرة خليه عادي (بدون sticky) لتفادي تعارض مع collapse) */
+@media (max-width: 992px){
+  .sidebar-sticky { position: static; top: auto; }
+}
+
+
+/* ... (existing code) ... */
+
+/* ---------- Badges ---------- */
+.badge{
+/* ... (existing badge styles) ... */
+}
+.action-create{ background: rgba(34,197,94,.2); color:#a9f5ca; }
+/* ... (existing badge styles) ... */
+.action-deposit{ background: rgba(33,212,253,.2); color:#d2f7ff; }
+.badge-prime { background: rgba(212,175,55,.25); color:#ffe9a8; } /* <-- ADD THIS */
+.ltype-paid{ background: rgba(34,197,94,.23); color:#b3f7d1; }
+/* ... (existing badge styles) ... */
+.status-inactive{background: rgba(148,163,184,.20); color:#b6c5d9; } /* Custom for loan status */
+
+/* ... (existing code) ... */
+
+/* =======================================================
+   LIGHT MODE — Summary Box Styling (Aurora Luxe Adapted)
+   ======================================================= */
+html[data-theme='light'] .summary-box {
+/* ... (existing code) ... */
+}
+html[data-theme='light'] .badge-prime { background: rgba(212,175,55,.15); color:#92400e; } /* <-- ADD THIS */
+html[data-theme='light'] .ltype-paid     { background: rgba(34,197,94,.12);  color:#065f46; }
+/* ... (existing code) ... */
+html[data-theme='light'] .summary-list li .icon-yellow { color: #ca8a04; }
+html[data-theme='light'] .summary-list li .icon-purple { color: #7c3aed; }
+html[data-theme='light'] .summary-list li .icon-prime { color: var(--gold, #d4af37); } /* <-- ADD THIS */
+
+
+/* ... (existing code) ... */
+.summary-list li .icon-yellow { color: #eab308; } /* yellow-500 */
+.summary-list li .icon-purple { color: #a855f7; } /* purple-500 */
+.summary-list li .icon-prime { color: var(--gold, #d4af37); } /* <-- ADD THIS */
+
+
+/* =========================================================
+    NOUVEAU: Leaderboard des Primes
+    Styles étendus pour le classement des performances.
+    ========================================================= */
+
+/* --- NOUVEAU: Grille à deux colonnes restaurée --- */
+.leaderboard-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); /* Colonnes flexibles */
+    gap: 1.5rem;
+    align-items: flex-start; /* Aligne le haut des cartes */
+}
+
+/* Passage à une seule colonne sur les écrans plus petits */
+@media (max-width: 992px) {
+    .leaderboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* --- Styles du Titre du Classement --- */
+.leaderboard-title {
+    background: linear-gradient(90deg, var(--accent-1), var(--gold) 70%);
+    -webkit-background-clip: text; /* Application du gradient sur le texte */
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.5rem; /* Ajout d'une marge pour espacer du sous-titre */
+    text-align: center; /* Centrer le titre */
+    font-size: 1.75rem; /* Agrandir légèrement le titre */
+    font-weight: 800;
+}
+
+/* Style pour le sous-titre (p.hint) sous le titre */
+.leaderboard-container > .hint {
+    text-align: center;
+    margin-top: -0.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+/* --- Styles des Cartes de Classement --- */
+.leaderboard-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--glass); /* Fond semi-transparent */
+    border: 1px solid var(--border);
+    border-radius: var(--r-16);
+    margin-bottom: 0.75rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1); /* Ombre légère pour la profondeur */
+}
+
+/* Ajout d'un effet de survol pour toutes les cartes */
+.leaderboard-card:not(.rank-1):not(.rank-2):not(.rank-3):hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+    border-color: var(--accent-2-alpha);
+}
+
+.leaderboard-card .rank-badge {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--muted);
+    width: 45px; /* Légèrement plus large */
+    flex-shrink: 0; /* Empêche le badge de rétrécir */
+    text-align: center;
+    line-height: 1;
+}
+
+/* Styles pour les badges de rang inférieur (4-10) */
+.leaderboard-card:not(.rank-1):not(.rank-2):not(.rank-3) .rank-badge {
+    font-size: 1.25rem;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+
+.leaderboard-card .employee-info {
+    flex-grow: 1;
+    /* Assure que le conteneur peut s'étendre */
+    min-width: 0; /* Correction pour flexbox et text-overflow */
+}
+
+.leaderboard-card .employee-info .name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    display: block;
+    margin-bottom: 0.35rem; /* Espace ajusté */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Gère les noms très longs */
+}
+
+.leaderboard-card .employee-info .stats {
+    display: flex;
+    flex-wrap: wrap; /* Permet aux stats de passer à la ligne sur petit écran */
+    gap: 0.5rem 1.25rem; /* Espacement vertical et horizontal */
+    font-size: 0.8rem;
+    font-weight: 500;
+    align-items: center;
+}
+
+/* Amélioration des icônes de statistiques */
+.leaderboard-card .employee-info .stats span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem; /* Espace entre l'icône et le texte */
+}
+
+.leaderboard-card .employee-info .stat-danger { color: var(--danger); }
+.leaderboard-card .employee-info .stat-warn { color: var(--warn); }
+.leaderboard-card .employee-info .stat-danger i,
+.leaderboard-card .employee-info .stat-warn i {
+    font-size: 0.9rem; /* Taille d'icône cohérente */
+}
+
+
+.leaderboard-card .score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    border-radius: var(--r-12);
+    padding: 0.5rem 1.25rem; /* Padding horizontal augmenté */
+    box-shadow: inset 0 2px 4px rgba(0,0,0,.3); /* Ombre intérieure plus prononcée */
+    min-width: 80px; /* Largeur minimale pour un look cohérent */
+    flex-shrink: 0;
+}
+
+.leaderboard-card .score span {
+    font-size: 1.75rem;
+    font-weight: 900;
+    color: var(--accent-1);
+    line-height: 1.1; /* Ligne hauteur ajustée */
+    transition: color 0.3s ease;
+}
+.leaderboard-card .score small {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+/* --- Styles du Podium (Or, Argent, Bronze) --- */
+.gold { color: #FFD700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.7); }
+.silver { color: #C0C0C0; text-shadow: 0 0 8px rgba(192, 192, 192, 0.6); }
+.bronze { color: #CD7F32; text-shadow: 0 0 8px rgba(205, 127, 50, 0.6); }
+
+/* Animation pour les badges icônes */
+.rank-badge .fa-trophy,
+.rank-badge .fa-award,
+.rank-badge .fa-medal {
+    transform-origin: bottom center;
+    animation: sway 2s ease-in-out infinite;
+}
+
+@keyframes sway {
+    0%, 100% { transform: rotate(-5deg); }
+    50% { transform: rotate(5deg); }
+}
+
+/* Keyframes pour les 3 rangs */
+@keyframes pulseGlowGold {
+  0%,100% { box-shadow: 0 0 12px rgba(212,175,55,.4); border-color: rgba(212, 175, 55, 0.7); }
+  50% { box-shadow: 0 0 28px rgba(212,175,55,.8); border-color: rgba(212, 175, 55, 1); }
+}
+@keyframes pulseGlowSilver {
+  0%,100% { box-shadow: 0 0 10px rgba(192,192,192,.3); border-color: rgba(192, 192, 192, 0.6); }
+  50% { box-shadow: 0 0 22px rgba(192,192,192,.6); border-color: rgba(192, 192, 192, 0.9); }
+}
+/* NOUVEAU: Animation pour le bronze */
+@keyframes pulseGlowBronze {
+  0%,100% { box-shadow: 0 0 8px rgba(205,127,50,.2); border-color: rgba(205, 127, 50, 0.5); }
+  50% { box-shadow: 0 0 18px rgba(205,127,50,.4); border-color: rgba(205, 127, 50, 0.7); }
+}
+
+.leaderboard-card.rank-1 {
+    transform: scale(1.03);
+    background: linear-gradient(135deg, rgba(212, 175, 55, .15), rgba(212, 175, 55, .05));
+    animation: pulseGlowGold 2.5s ease-in-out infinite;
+}
+.leaderboard-card.rank-1 .score span { color: #FFD700; }
+.leaderboard-card.rank-1 .employee-info .name { font-size: 1.2rem; }
+
+.leaderboard-card.rank-2 {
+    transform: scale(1.01); /* Léger scale pour le rang 2 */
+    background: linear-gradient(135deg, rgba(192, 192, 192, .15), rgba(192, 192, 192, .05));
+    animation: pulseGlowSilver 3s ease-in-out infinite;
+}
+.leaderboard-card.rank-2 .score span { color: #C0C0C0; }
+
+.leaderboard-card.rank-3 {
+    background: linear-gradient(135deg, rgba(205, 127, 50, .15), rgba(205, 127, 50, .05));
+    animation: pulseGlowBronze 3.5s ease-in-out infinite;
+}
+.leaderboard-card.rank-3 .score span { color: #CD7F32; }
+
+/* --- NOUVEAU: Styles pour le formulaire de paiement flexible --- */
+.payment-form .payment-list-container {
+    max-height: 450px; /* Hauteur max avant scrolling */
+    overflow-y: auto;
+    padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--r-12);
+    background: #0e131ad6;
+}
+
+.payment-form .payment-row {
+    display: grid;
+    grid-template-columns: 1fr auto; /* Nom | Champ de saisie */
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-light);
+}
+.payment-form .payment-list-container .payment-row:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.payment-form .payment-row label {
+    font-weight: 600;
+    color: var(--text-light);
+    margin-bottom: 0; /* Annule le margin par défaut */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.payment-form .payment-row .input-group {
+    max-width: 150px; /* Limite la largeur du champ de saisie */
+}
+/* --- Fin des nouveaux styles de formulaire --- */
+
+
+/* --- Styles pour le formulaire de paiement (maintenant obsolète sur cette page) --- */
+/* Ces styles s'appliqueront si un formulaire similaire est utilisé ailleurs */
+.payment-form .podium-group {
+    margin-bottom: 1.25rem;
+    border-left: 3px solid var(--border);
+    padding-left: 1rem;
+    transition: border-color 0.3s ease;
+}
+/* Ajout de style au focus */
+.payment-form .podium-group:focus-within {
+    border-left-color: var(--accent-1);
+}
+
+.payment-form .podium-group label {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text);
+    margin-bottom: 0.5rem; /* Espace entre le label et l'input */
+}
+.payment-form .podium-group label i {
+    font-size: 1.3rem;
+    transition: transform 0.3s ease;
+}
+.payment-form .podium-group:focus-within label i {
+    transform: scale(1.1);
+}
+
+/* Style pour les inputs dans ce formulaire spécifique */
+.payment-form .podium-group input[type="number"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+.payment-form .podium-group input[type="number"]:focus {
+    background: var(--bg-alt);
+    border-color: var(--accent-1);
+    box-shadow: 0 0 10px var(--accent-1-alpha);
+}
+
+
+/* --- Styles Thème Clair --- */
+/* Assure que les styles du formulaire sont aussi bons en thème clair */
+html[data-theme='light'] .payment-form .podium-group label {
+    color: var(--text);
+}
+html[data-theme='light'] .payment-form .podium-group label i {
+    text-shadow: none; /* Supprime l'ombre en thème clair */
+}
+
+/* NOUVEAU: Thème clair pour le nouveau formulaire */
+html[data-theme='light'] .payment-form .payment-list-container {
+    background: #e6f2ff9c;
+    border-color: #dee2e6;
+}
+html[data-theme='light'] .payment-form .payment-row {
+    border-color: #e9ecef;
+}
+html[data-theme='light'] .payment-form .payment-row label {
+    color: var(--text);
+}
+
+
+/* Assure que les cartes de classement sont lisibles en thème clair */
+html[data-theme='light'] .leaderboard-card {
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+html[data-theme='light'] .leaderboard-card .score {
+    background: #f8f9fa;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.1);
+}
+
+/* Ajustements des animations pour le thème clair */
+html[data-theme='light'] .leaderboard-card.rank-1 {
+    background: linear-gradient(135deg, rgba(212, 175, 55, .1), #ffffff);
+}
+html[data-theme='light'] .leaderboard-card.rank-2 {
+    background: linear-gradient(135deg, rgba(192, 192, 192, .1), #ffffff);
+}
+html[data-theme='light'] .leaderboard-card.rank-3 {
+    background: linear-gradient(135deg, rgba(205, 127, 50, .1), #ffffff);
+}
+
+
+/* --- Styles Réactifs --- */
+@media (max-width: 576px) {
+    .leaderboard-title {
+        font-size: 1.4rem;
+    }
+
+    .leaderboard-card {
+        padding: 0.75rem;
+        gap: 0.5rem;
+    }
+
+    .leaderboard-card .rank-badge {
+        font-size: 1.25rem;
+        width: 35px;
+    }
+
+    .leaderboard-card .employee-info .name {
+        font-size: 1rem;
+    }
+
+    .leaderboard-card .employee-info .stats {
+        gap: 0.25rem 0.75rem; /* Espace réduit sur mobile */
+        font-size: 0.75rem;
+    }
+
+    .leaderboard-card .score {
+        padding: 0.5rem;
+        min-width: 65px;
+    }
+
+    .leaderboard-card .score span {
+        font-size: 1.4rem;
+    }
+    .leaderboard-card .score small {
+        font-size: 0.6rem;
+    }
+
+    /* Animation de balancement plus subtile sur mobile */
+    .rank-badge .fa-trophy,
+    .rank-badge .fa-award,
+    .rank-badge .fa-medal {
+        animation: sway 3s ease-in-out infinite;
+    }
+    
+    /* NOUVEAU: Réactivité pour le nouveau formulaire */
+    .payment-form .payment-row {
+        grid-template-columns: 1fr; /* Passe en une seule colonne */
+        gap: 0.25rem;
+    }
+    .payment-form .payment-row .input-group {
+        max-width: 100%; /* Le champ de saisie prend toute la largeur */
+    }
+}
+

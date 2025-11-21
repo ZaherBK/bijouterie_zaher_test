@@ -1,0 +1,22 @@
+fastapi>=0.121.2
+uvicorn[standard]==0.30.6
+SQLAlchemy==2.0.36
+pydantic==2.9.2
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
+python-jose==3.3.0
+python-multipart==0.0.9
+jinja2==3.1.4
+email-validator==2.2.0
+
+# Async Postgres driver
+asyncpg==0.29.0
+
+# For forms/csrf or misc if تحتاجها
+itsdangerous==2.2.0
+
+# New dependency for loan calculations
+python-dateutil>=2.8.2
+
+pytz>=2025.2
+pymysql>=1.1.0
