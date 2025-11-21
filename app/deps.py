@@ -37,7 +37,9 @@ def web_require_permission(permission: str):
         user = Depends(get_current_session_user)
     ):
         if isinstance(user, RedirectResponse):
-            return user
+            raise HTTPException(status_code=status.HTTP_302_FOUND,
+                                detail="Not authenticated",
+                                headers={"Location": user.headers["location"]})
         perms = user.get("permissions", {})
         if perms.get("is_admin"):
             return user
