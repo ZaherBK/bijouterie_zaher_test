@@ -68,7 +68,12 @@ app.include_router(employees_api.router)
 app.include_router(attendance_api.router)
 app.include_router(leaves_api.router)
 app.include_router(deposits_api.router)
+app.include_router(deposits_api.router)
 app.include_router(loans_api.router)
+# --- NOUVEAU: Expenses Router ---
+from .routers import expenses
+app.include_router(expenses.router)
+# --- FIN NOUVEAU ---
 
 
 # --- 2. Static/Templates Setup ---
@@ -659,6 +664,73 @@ async def deposits_delete(
 
     # Redirect back to the deposits list page
     return RedirectResponse(request.url_for("deposits_page"), status_code=status.HTTP_302_FOUND)
+
+# --- Dépenses (Expenses) - Page Web ---
+@app.get("/expenses", response_class=HTMLResponse, name="expenses_page")
+async def expenses_page(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(web_require_permission("can_view_settings")) # Using can_view_settings as proxy
+):
+    # Fetch expenses
+    expenses_query = select(models.Expense).order_by(models.Expense.date.desc(), models.Expense.created_at.desc()).limit(100)
+    res_expenses = await db.execute(expenses_query)
+    
+    context = {
+        "request": request, "user": user, "app_name": APP_NAME,
+        "expenses": res_expenses.scalars().all(),
+        "today_date": get_tunisia_today().isoformat()
+    }
+    return templates.TemplateResponse("expenses.html", context)
+
+@app.post("/expenses/create", name="expenses_create")
+async def expenses_create(
+    request: Request,
+    description: Annotated[str, Form()],
+    amount: Annotated[Decimal, Form()],
+    date: Annotated[dt_date, Form()],
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(web_require_permission("can_view_settings")),
+    category: Annotated[str, Form()] = None
+):
+    if amount <= 0:
+        return RedirectResponse(request.url_for('expenses_page'), status_code=status.HTTP_302_FOUND)
+
+    new_expense = models.Expense(
+        description=description, amount=amount, date=date,
+        category=category or None, created_by=user['id']
+    )
+    db.add(new_expense)
+    await db.commit()
+    await db.refresh(new_expense)
+
+    await log(
+        db, user['id'], "create", "expense", new_expense.id,
+        user.get('branch_id'), f"Dépense créée: {description} ({amount} TND)"
+    )
+
+    return RedirectResponse(request.url_for('expenses_page'), status_code=status.HTTP_302_FOUND)
+
+
+@app.post("/expenses/{expense_id}/delete", name="expenses_delete_web")
+async def expenses_delete_web(
+    request: Request,
+    expense_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(web_require_permission("is_admin"))
+):
+    res = await db.execute(select(models.Expense).where(models.Expense.id == expense_id))
+    expense = res.scalar_one_or_none()
+    
+    if expense:
+        await db.delete(expense)
+        await db.commit()
+        await log(
+            db, user['id'], "delete", "expense", expense_id,
+            user.get('branch_id'), f"Dépense supprimée: {expense.description}"
+        )
+        
+    return RedirectResponse(request.url_for('expenses_page'), status_code=status.HTTP_302_FOUND)
 
 # --- Congés (Leaves) ---
 # ... (Leaves routes remain the same - not shown for brevity) ...

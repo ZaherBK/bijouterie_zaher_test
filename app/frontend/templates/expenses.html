@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="page-title"><i class="fa-solid fa-receipt"></i> Gestion des Dépenses</h2>
+
+<div class="card form-card">
+    <h3><i class="fa-solid fa-plus"></i> Ajouter une Dépense</h3>
+    <form method="post" action="{{ request.url_for('expenses_create') }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="description">Libellé (Description)</label>
+                <input type="text" id="description" name="description" class="form-control" required
+                    placeholder="Ex: Facture STEG, Achat fournitures...">
+            </div>
+            <div class="form-group">
+                <label for="amount">Montant (TND)</label>
+                <input type="text" id="amount" name="amount" class="form-control" required placeholder="Ex: 150.50"
+                    pattern="^\d+([.,]\d{1,2})?$" title="Montant positif, ex: 150 ou 150.50 ou 150,50">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="date">Date</label>
+                <input type="date" id="date" name="date" class="form-control" required value="{{ today_date }}">
+            </div>
+            <div class="form-group">
+                <label for="category">Catégorie (Optionnel)</label>
+                <input type="text" id="category" name="category" class="form-control"
+                    placeholder="Ex: Loyer, Electricité...">
+            </div>
+        </div>
+        <div class="form-actions" style="margin-top: 1rem;">
+            <button type="submit" class="btn btn-success">
+                <i class="fa-solid fa-save"></i> Enregistrer Dépense
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Sync Button and Modal -->
+<div class="card form-card" style="margin-top: 1.5rem;">
+    <h3><i class="fa-solid fa-sync"></i> Synchronisation Compta</h3>
+    <p>Synchroniser les dépenses d'aujourd'hui vers l'ancien logiciel.</p>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#syncModal">
+        <i class="fa-solid fa-database"></i> Synchroniser vers Compta
+    </button>
+</div>
+
+<!-- Sync Modal -->
+<div class="modal fade" id="syncModal" tabindex="-1" aria-labelledby="syncModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content card">
+            <div class="modal-header">
+                <h5 class="modal-title" id="syncModalLabel">Synchronisation Base de Données</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                    style="background-color: white;"></button>
+            </div>
+            <div class="modal-body">
+                <form id="syncForm">
+                    <div class="form-group mb-3">
+                        <label for="syncHost">Serveur (Host)</label>
+                        <input type="text" class="form-control" id="syncHost" value="localhost" required>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="syncSchema">Nom de la Base (Schema)</label>
+                        <input type="text" class="form-control" id="syncSchema" placeholder="ex: birkal" required>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="syncPassword">Mot de Passe DB</label>
+                        <input type="password" class="form-control" id="syncPassword" value="6165" required>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="syncCoddep">Code Dépense (CODDEP)</label>
+                        <input type="number" class="form-control" id="syncCoddep" value="1" required>
+                        <small class="text-muted">Code utilisé dans l'ancien logiciel (1 par défaut pour
+                            Dépenses).</small>
+                    </div>
+                    <div id="syncResult" class="mt-3"></div>
+                </form>
+            </div>
+            <div class="modal-footer form-actions">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-primary" onclick="performSync()">Confirmer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function performSync() {
+        const host = document.getElementById('syncHost').value;
+        const schema = document.getElementById('syncSchema').value;
+        const password = document.getElementById('syncPassword').value;
+        const coddep = document.getElementById('syncCoddep').value;
+        const resultDiv = document.getElementById('syncResult');
+
+        if (!schema) {
+            resultDiv.innerHTML = '<div class="alert alert-warning">Veuillez entrer le nom de la base (Schema).</div>';
+            return;
+        }
+
+        resultDiv.innerHTML = '<div class="alert alert-info">Synchronisation en cours...</div>';
+
+        try {
+            const response = await fetch('/api/expenses/sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    host: host,
+                    schema_name: schema,
+                    password: password,
+                    coddep: parseInt(coddep)
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                resultDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+            } else {
+                resultDiv.innerHTML = `<div class="alert alert-danger">Erreur: ${data.message}</div>`;
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            resultDiv.innerHTML = '<div class="alert alert-danger">Erreur de connexion au serveur.</div>';
+        }
+    }
+</script>
+
+
+<div class="card table-card" style="margin-top: 1.5rem;">
+    <h3><i class="fa-solid fa-list-ul"></i> Dépenses Récentes</h3>
+    {% if expenses %}
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Libellé</th>
+                    <th>Date</th>
+                    <th>Montant (TND)</th>
+                    <th>Catégorie</th>
+                    <th>Enregistré le</th>
+                    {% if user.permissions.is_admin %}
+                    <th>Actions</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in expenses %}
+                <tr>
+                    <td>{{ e.id }}</td>
+                    <td>{{ e.description }}</td>
+                    <td>{{ e.date.strftime('%Y-%m-%d') }}</td>
+                    <td class="amount">{{ "%.2f"|format(e.amount|float) }}</td>
+                    <td>{{ e.category or '-' }}</td>
+                    <td class="timestamp">{{ e.created_at | to_tunisia }}</td>
+                    {% if user.permissions.is_admin %}
+                    <td>
+                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"
+                            data-bs-target="#deleteExpenseModal-{{ e.id }}">
+                            Supprimer
+                        </button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="no-data" style="padding-top: 1rem;">Aucune dépense enregistrée à afficher.</p>
+    {% endif %}
+</div>
+
+{% if user.permissions.is_admin and expenses %}
+{% for e in expenses %}
+<div class="modal fade" id="deleteExpenseModal-{{ e.id }}" tabindex="-1"
+    aria-labelledby="deleteExpenseModalLabel-{{ e.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content card">
+            <form action="{{ url_for('expenses_delete_web', expense_id=e.id) }}" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteExpenseModalLabel-{{ e.id }}">Confirmer la Suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                        style="background-color: white;"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Êtes-vous sûr de vouloir supprimer la dépense :
+                        <strong>{{ e.description }}</strong> de
+                        <strong>{{ "%.2f TND"|format(e.amount|float) }}</strong> ?
+                    </p>
+                    <p class="text-danger">Cette action est irréversible.</p>
+                </div>
+                <div class="modal-footer form-actions">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-danger">Oui, Supprimer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% endblock %}

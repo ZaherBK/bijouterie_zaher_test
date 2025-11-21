@@ -324,3 +324,14 @@ class LoanSettings(Base):
     default_term_unit: Mapped[LoanTermUnit] = mapped_column(Enum(LoanTermUnit), default=LoanTermUnit.month)
     grace_days: Mapped[int] = mapped_column(Integer, default=3)
     penalty_rate_per_period: Mapped[Decimal] = mapped_column(Numeric(6, 4), default=Decimal("0.000"))
+
+
+class Expense(Base):
+    __tablename__ = "expenses"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    description: Mapped[str] = mapped_column(String(255))
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    date: Mapped[date] = mapped_column(Date, index=True)
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

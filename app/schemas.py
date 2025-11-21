@@ -280,3 +280,21 @@ class RepaymentOut(RepaymentCreate):
     loan_id: int
     created_by: int
     class Config: from_attributes = True
+
+
+# --- NOUVEAUX SCHÉMAS : Dépenses (Expenses) ---
+class ExpenseBase(BaseModel):
+    description: str
+    amount: Decimal = Field(..., gt=0, max_digits=10, decimal_places=2)
+    date: date
+    category: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+
+class ExpenseCreate(ExpenseBase):
+    pass
+
+class ExpenseOut(ExpenseBase):
+    id: int
+    created_by: int
+    created_at: datetime
+# --- FIN DES NOUVEAUX SCHÉMAS ---

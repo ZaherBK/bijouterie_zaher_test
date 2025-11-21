@@ -9,10 +9,11 @@ def sync_deposits_to_legacy(
     schema: str,
     password: str,
     deposits: List[Dict[str, Any]],
-    user_name: str
+    user_name: str,
+    coddep_override: int = 2 # Default to 2 for Avances
 ) -> Dict[str, Any]:
     """
-    Connects to the legacy MySQL database and inserts deposit records.
+    Connects to the legacy MySQL database and inserts deposit/expense records.
     """
     connection = None
     try:
@@ -49,19 +50,22 @@ def sync_deposits_to_legacy(
                 # BANQUE: ""
                 # NUMPCE: ""
                 # DATPCE: Date of deposit (same as DATDEP)
-                # CODDEP: 2
+                # CODDEP: Passed as argument (2 for Avances, 1 for Expenses usually)
                 # NUMDEP: Auto-incremented
                 # MONTANT: Deposit amount
-                # LIBDEP: Employee Name + Note
+                # LIBDEP: Employee Name + Note OR Description
                 # DATDEP: Date of deposit
                 # NUM: 0
                 # UTIL: User name
                 
-                employee_name = deposit.get("employee_name", "Inconnu")
-                note = deposit.get("note", "")
-                lib_dep = f"{employee_name}"
-                if note:
-                    lib_dep += f" - {note}"
+                # Handle both Deposit (employee_name) and Expense (description) structures
+                if "employee_name" in deposit:
+                    lib_dep = deposit.get("employee_name", "Inconnu")
+                    note = deposit.get("note", "")
+                    if note:
+                        lib_dep += f" - {note}"
+                else:
+                    lib_dep = deposit.get("description", "Dépense")
                 
                 # Truncate LIBDEP if necessary (assuming 100 chars limit, adjust if known)
                 lib_dep = lib_dep[:100]
@@ -78,7 +82,7 @@ def sync_deposits_to_legacy(
                     "",                 # BANQUE
                     "",                 # NUMPCE
                     deposit['date'],    # DATPCE
-                    2,                  # CODDEP
+                    coddep_override,    # CODDEP
                     current_num_dep,    # NUMDEP
                     deposit['amount'],  # MONTANT
                     lib_dep,            # LIBDEP
@@ -91,7 +95,7 @@ def sync_deposits_to_legacy(
                 inserted_count += 1
 
             connection.commit()
-            return {"success": True, "count": inserted_count, "message": f"Successfully synced {inserted_count} deposits."}
+            return {"success": True, "count": inserted_count, "message": f"Successfully synced {inserted_count} records."}
 
     except pymysql.MySQLError as e:
         print(f"MySQL Error: {e}")
