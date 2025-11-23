@@ -45,7 +45,7 @@ async def generate_sql(
     expenses = res_expenses.scalars().all()
     
     if not deposits and not expenses:
-        return {"success": False, "message": "Aucune donnée à synchroniser pour aujourd'hui."}
+        raise HTTPException(status_code=400, detail="Aucune donnée à synchroniser pour aujourd'hui.")
 
     # Generate SQL
     sql_lines = []
