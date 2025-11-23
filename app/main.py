@@ -5,6 +5,7 @@ from typing import Annotated, List, Optional
 import json
 import enum # Ajout de l'import enum manquant
 import traceback # Pour un meilleur logging d'erreur
+import pytz
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, status, APIRouter, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
