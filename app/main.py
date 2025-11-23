@@ -1,5 +1,5 @@
 import os
-from datetime import timedelta, date as dt_date, datetime, timezone
+from datetime import timedelta, date as dt_date, datetime
 from decimal import Decimal
 from typing import Annotated, List, Optional
 import json
@@ -7,7 +7,7 @@ import enum # Ajout de l'import enum manquant
 import traceback # Pour un meilleur logging d'erreur
 import pytz
 
-from fastapi import Depends, FastAPI, Form, HTTPException, Request, status, APIRouter, UploadFile, File
+from fastapi import Depends, FastAPI, Form, HTTPException, Request, status, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -17,14 +17,13 @@ from starlette.requests import Request # Ensure this is imported
 from sqlalchemy import select, delete, func, case, extract, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy.future import select
 from . import models, schemas # Keep this general import if other parts of the file use models.XXX
 import io # Importé pour l'export
 
 # --- CORRIGÉ : Import de get_db depuis .deps ---
 from .db import engine, Base, AsyncSessionLocal
 # --- CORRIGÉ : Import de hash_password ---
-from .auth import authenticate_user, create_access_token, hash_password, ACCESS_TOKEN_EXPIRE_MINUTES, api_require_permission
+from .auth import authenticate_user, hash_password, ACCESS_TOKEN_EXPIRE_MINUTES, api_require_permission
 
 # Importer TOUS les modèles nécessaires (including Role and Enums explicitly)
 from .models import (
@@ -42,7 +41,7 @@ from .audit import latest, log
 # Import Routers
 from .routers import users, branches, employees as employees_api, attendance as attendance_api, leaves as leaves_api, deposits as deposits_api
 # --- MODIFIÉ : Importer les nouvelles dépendances ---
-from .deps import get_db, web_require_permission, get_current_session_user
+from .deps import get_db, web_require_permission
 # --- NOUVEAU: Import de la fonction safe si elle est dans deps.py ---
 from .deps import get_user_data_from_session_safe
 # --- FIN NOUVEAU ---
@@ -56,7 +55,7 @@ APP_NAME = os.getenv("APP_NAME", "Bijouterie Zaher")
 
 # --- NEW: Define Tunisia Timezone (UTC+1) ---
 
-TUNISIA_TZ = timezone(timedelta(hours=1))
+TUNISIA_TZ = pytz.timezone("Africa/Tunis")
 
 # --- FIN MODIFIÉ ---
 
@@ -69,17 +68,12 @@ app.include_router(employees_api.router)
 app.include_router(attendance_api.router)
 app.include_router(leaves_api.router)
 app.include_router(deposits_api.router)
-app.include_router(deposits_api.router)
 app.include_router(loans_api.router)
-# --- NOUVEAU: Expenses Router ---
 # --- NOUVEAU: Expenses Router ---
 from .routers import expenses, sync
 app.include_router(expenses.router)
 app.include_router(sync.router)
 # --- FIN NOUVEAU ---
-# --- FIN NOUVEAU ---
-
-
 # --- 2. Static/Templates Setup ---
 BASE_DIR = os.path.dirname(__file__)
 static_path = os.path.join(BASE_DIR, "frontend", "static")
@@ -244,8 +238,15 @@ class CustomJSONEncoder(json.JSONEncoder):
 # --- FIN NOUVEAU ---
 
 # --- NOUVEAU: Helper pour convertir les dates/datetimes lors de l'import ---
-def _parse_dates(item: dict, date_fields: list[str] = [], datetime_fields: list[str] = []):
+def _parse_dates(
+    item: dict,
+    date_fields: Optional[list[str]] = None,
+    datetime_fields: Optional[list[str]] = None,
+):
     """Convertit les champs date/datetime string d'un dict en objets Python."""
+    date_fields = date_fields or []
+    datetime_fields = datetime_fields or []
+    
     for field in date_fields:
         if field in item and item[field] and isinstance(item[field], str): # Ajout de 'item[field]' pour vérifier non-None
             try:
