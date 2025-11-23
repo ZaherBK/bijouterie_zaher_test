@@ -142,6 +142,7 @@
     try {
       const response = await fetch('/api/sync/generate-sql', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -165,7 +166,8 @@
         resultDiv.innerHTML = '<div class="alert alert-success">Fichier téléchargé ! Exécutez-le sur votre base locale.</div>';
       } else {
         const data = await response.json();
-        resultDiv.innerHTML = `<div class="alert alert-danger">Erreur: ${data.message || 'Erreur inconnue'}</div>`;
+        const message = data.message || data.detail || 'Erreur inconnue';
+        resultDiv.innerHTML = `<div class="alert alert-danger">Erreur: ${message}</div>`;
       }
 
     } catch (error) {
