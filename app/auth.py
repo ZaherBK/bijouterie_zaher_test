@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -21,7 +21,7 @@ from .schemas import Token
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme for FastAPI (لو عندك مسار آخر لواجهة الـAPI عدّله)
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 # JWT configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "change_me")
@@ -77,27 +77,43 @@ async def login(
     return Token(access_token=token)
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    request: Request,
+    token: str | None = Depends(oauth2_scheme),
     session: AsyncSession = Depends(get_session),
 ) -> User:
-    """Retrieve the current user from a JWT token."""
+    """Retrieve the current user from a JWT token or the web session."""
     credentials_exception = HTTPException(status_code=401, detail="Invalid credentials")
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        uid = payload.get("sub")
-        if uid is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
 
-    # eager-load 'permissions' بدل role
-    res = await session.execute(
-        select(User).options(selectinload(User.permissions)).where(User.id == int(uid))
-    )
-    user = res.scalar_one_or_none()
-    if not user or not user.is_active:
-        raise credentials_exception
-    return user
+    # 1) Try bearer token (API access)
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            uid = payload.get("sub")
+            if uid is None:
+                raise credentials_exception
+        except JWTError:
+            raise credentials_exception
+
+        res = await session.execute(
+            select(User).options(selectinload(User.permissions)).where(User.id == int(uid))
+        )
+        user = res.scalar_one_or_none()
+        if not user or not user.is_active:
+            raise credentials_exception
+        return user
+
+    # 2) Fallback to session cookie (web UI)
+    session_user = request.session.get("user") if request.session else None
+    if session_user and session_user.get("email"):
+        res = await session.execute(
+            select(User).options(selectinload(User.permissions)).where(User.email == session_user["email"])
+        )
+        user = res.scalar_one_or_none()
+        if user and user.is_active:
+            return user
+
+    # Nothing worked
+    raise credentials_exception
 
 def api_require_permission(permission: str):
     """
