@@ -9,7 +9,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 
 # Importer les Enums depuis models.py, y compris PayType
 # --- MODIFIÉ : Role n'est plus un Enum ---
-from .models import AttendanceType, LeaveType, PayType
+from .models import AttendanceType, LeaveType, PayType, LoanInterestType, LoanTermUnit, LoanStatus
 # --- FIN MODIFIÉ ---
 
 
@@ -233,10 +233,10 @@ class AuditOut(BaseModel):
 class LoanBase(BaseModel):
     employee_id: int
     principal: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
-    interest_type: Literal["none", "flat", "reducing"] = "none" # <-- AJOUTEZ = "none"
+    interest_type: LoanInterestType = LoanInterestType.none
     annual_interest_rate: Decimal | None = Field(None, ge=0, max_digits=7, decimal_places=4)
     term_count: int = Field(..., gt=0, le=480)
-    term_unit: Literal["week", "month"]
+    term_unit: LoanTermUnit
     start_date: date
     first_due_date: date | None = None
     fee: Decimal | None = Field(None, ge=0, max_digits=10, decimal_places=3)
@@ -247,7 +247,7 @@ class LoanCreate(LoanBase):
 
 class LoanOut(LoanBase):
     id: int
-    status: Literal["draft","approved","active","paid","defaulted","canceled"]
+    status: LoanStatus
     scheduled_total: Decimal
     repaid_total: Decimal
     outstanding_principal: Decimal
