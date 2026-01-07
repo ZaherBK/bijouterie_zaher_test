@@ -184,6 +184,7 @@
                     <th>Montant (TND)</th>
                     <th>Catégorie</th>
                     <th>Enregistré le</th>
+                    <th>Créé par</th>
                     {% if user.permissions.is_admin %}
                     <th>Actions</th>
                     {% endif %}
@@ -198,6 +199,7 @@
                     <td class="amount">{{ "%.2f"|format(e.amount|float) }}</td>
                     <td>{{ e.category or '-' }}</td>
                     <td class="timestamp">{{ e.created_at | to_tunisia }}</td>
+                    <td>{{ e.creator.full_name if e.creator else '-' }}</td>
                     {% if user.permissions.is_admin %}
                     <td>
                         <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"

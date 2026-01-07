@@ -81,6 +81,7 @@
             <th>Type</th>
             <th>Montant (TND)</th>
             <th>Note</th>
+            <th>Créé par</th>
           </tr>
         </thead>
         <tbody>
@@ -111,6 +112,7 @@
             </td>
             <td class="amount">{{ "%.2f"|format(p.amount|float) }}</td>
             <td>{{ p.note or '-' }}</td>
+            <td>{{ p.creator.full_name if p.creator else 'Système' }}</td>
           </tr>
           {% endfor %}
         </tbody>

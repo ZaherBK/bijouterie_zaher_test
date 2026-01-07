@@ -44,6 +44,7 @@
           <th>Employé</th>
           <th>Montant</th>
           <th>Statut</th>
+          <th>Créé par</th>
           <th>Solde Restant</th>
           <th>Actions</th>
         </tr>
@@ -59,9 +60,9 @@
               {% if l.status.value == 'active' %}action-create
               {% elif l.status.value == 'paid' %}action-approve
               {% else %}status-inactive{% endif %}">
-              {{ l.status.value }}
             </span>
           </td>
+          <td>{{ l.creator.full_name if l.creator else '-' }}</td>
           <!-- FIX: Correction de l'erreur 'due_total' -->
           <td class="amount" style="color: var(--gold);">{{ '%.2f'|format(l.principal - l.repaid_total) }} TND</td>
           <td>

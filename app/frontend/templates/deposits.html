@@ -191,6 +191,7 @@
           <th>Montant (TND)</th>
           <th>Note</th>
           <th>Enregistré le</th>
+          <th>Créé par</th>
           {# --- NOUVEAU: Colonne Actions (Admin seulement) --- #}
           {% if user.permissions.is_admin %}
           <th>Actions</th>
@@ -213,6 +214,7 @@
           <td class="amount">{{ "%.2f"|format(d.amount|float) }}</td>
           <td>{{ d.note or '-' }}</td>
           <td class="timestamp">{{ d.created_at | to_tunisia }}</td>
+          <td>{{ d.creator.full_name if d.creator else '-' }}</td>
           {# --- NOUVEAU: Bouton Supprimer (Admin seulement) --- #}
           {% if user.permissions.is_admin %}
           <td>

@@ -591,7 +591,7 @@ async def deposits_page(
     user: dict = Depends(web_require_permission("can_manage_deposits"))
 ):
     employees_query = select(Employee).where(Employee.active == True).order_by(Employee.first_name)
-    deposits_query = select(Deposit).options(selectinload(Deposit.employee)).order_by(Deposit.date.desc(), Deposit.created_at.desc()) # Charger l'employé
+    deposits_query = select(Deposit).options(selectinload(Deposit.employee), selectinload(Deposit.creator)).order_by(Deposit.date.desc(), Deposit.created_at.desc()) # Charger l'employé et le créateur
 
     permissions = user.get("permissions", {})
     if not permissions.get("is_admin"):
@@ -707,7 +707,7 @@ async def expenses_page(
     user: dict = Depends(web_require_permission("can_manage_expenses"))
 ):
     # Fetch expenses
-    expenses_query = select(models.Expense).order_by(models.Expense.date.desc(), models.Expense.created_at.desc()).limit(100)
+    expenses_query = select(models.Expense).options(selectinload(models.Expense.creator)).order_by(models.Expense.date.desc(), models.Expense.created_at.desc()).limit(100)
     res_expenses = await db.execute(expenses_query)
     
     context = {
@@ -778,7 +778,7 @@ async def leaves_page(
 ):
     employees_query = select(Employee).where(Employee.active == True).order_by(Employee.first_name)
     # === FIX: Ajout du tri secondaire par created_at ===
-    leaves_query = select(Leave).options(selectinload(Leave.employee)).order_by(Leave.start_date.desc(), Leave.created_at.desc()) # Charger l'employé
+    leaves_query = select(Leave).options(selectinload(Leave.employee), selectinload(Leave.creator)).order_by(Leave.start_date.desc(), Leave.created_at.desc()) # Charger l'employé
     # === FIN DU FIX ===
 
     permissions = user.get("permissions", {})
@@ -1084,7 +1084,7 @@ async def pay_employee_page(
     # --- NOUVEAU: Charger les paiements récents (pour le tableau dans pay_employee.html) ---
     recent_payments_query = (
         select(Pay)
-        .options(selectinload(Pay.employee))
+        .options(selectinload(Pay.employee), selectinload(Pay.creator))
         .order_by(Pay.date.desc(), Pay.created_at.desc())
     )
     if not permissions.get("is_admin"):
@@ -2092,7 +2092,7 @@ async def loans_page(request: Request, db: AsyncSession = Depends(get_db), user:
     employees = (await db.execute(employees_query)).scalars().all()
 
     # === FIX: Ajout du tri secondaire par created_at ===
-    loans_query = select(Loan).options(selectinload(Loan.employee)).order_by(Loan.start_date.desc(), Loan.created_at.desc())
+    loans_query = select(Loan).options(selectinload(Loan.employee), selectinload(Loan.creator)).order_by(Loan.start_date.desc(), Loan.created_at.desc())
     # === FIN DU FIX ===
     if not permissions.get("is_admin"):
         loans_query = loans_query.join(Employee).where(Employee.branch_id == user.get("branch_id"))
@@ -2182,7 +2182,7 @@ async def loan_detail_page(
     """Affiche la page de détails d'un prêt."""
 
     loan_query = select(Loan).options(
-            selectinload(Loan.employee)
+            selectinload(Loan.employee), selectinload(Loan.creator)
             # --- FIX: Ne pas charger les relations ici, les requêter séparément ---
             # selectinload(Loan.schedules),
             # selectinload(Loan.repayments)
