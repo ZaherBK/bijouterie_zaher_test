@@ -46,7 +46,7 @@ async def create_deposit(
 @router.get("/", response_model=List[DepositOut])
 async def list_deposits(db: AsyncSession = Depends(get_db)):
     """List all deposits."""
-    res = await db.execute(select(Deposit).options(selectinload(Deposit.employee)).order_by(Deposit.date.desc()))
+    res = await db.execute(select(Deposit).options(selectinload(Deposit.employee), selectinload(Deposit.creator)).order_by(Deposit.date.desc()))
     return res.scalars().all()
 
 

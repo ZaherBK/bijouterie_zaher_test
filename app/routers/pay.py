@@ -14,5 +14,5 @@ router = APIRouter(prefix="/api/pay", tags=["pay"])
 @router.get("/", response_model=List[PayOut])
 async def list_payments(db: AsyncSession = Depends(get_db)):
     """List all payments."""
-    res = await db.execute(select(Pay).options(selectinload(Pay.employee)).order_by(Pay.date.desc()))
+    res = await db.execute(select(Pay).options(selectinload(Pay.employee), selectinload(Pay.creator)).order_by(Pay.date.desc()))
     return res.scalars().all()

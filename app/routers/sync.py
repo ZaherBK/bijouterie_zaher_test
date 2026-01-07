@@ -1,11 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import date
+from datetime import date, datetime
 from typing import List
 from pydantic import BaseModel
+import json
+from decimal import Decimal
+from sqlalchemy.orm import selectinload
 
-from ..models import Deposit, Expense, User
+from ..models import (
+    Deposit, Expense, User, Branch, Employee, Attendance, Leave, 
+    Pay, Loan, LoanSchedule, LoanRepayment, Role, AuditLog
+)
 from ..auth import api_require_permission
 from ..deps import get_db, api_current_user
 
@@ -15,6 +21,20 @@ class SqlGenRequest(BaseModel):
     schema_name: str
     coddep_expenses: int = 1
     coddep_deposits: int = 2
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        if isinstance(obj, Decimal):
+            return float(obj)
+        if hasattr(obj, "to_dict"):
+            return obj.to_dict()
+        if hasattr(obj, "__dict__"):
+             d = obj.__dict__.copy()
+             d.pop('_sa_instance_state', None)
+             return d
+        return super().default(obj)
 
 @router.post("/generate-sql")
 async def generate_sql(
@@ -27,19 +47,11 @@ async def generate_sql(
     """
     today = date.today()
     
-    # Fetch today's data
-    # 1. Deposits (filtered by branch if not admin)
-    deposits_query = select(Deposit).where(Deposit.date == today)
-    # Note: We should ideally filter by branch here too if we want to restrict what is synced
-    # But for simplicity, let's assume the user syncing knows what they are doing or we rely on the UI filter
-    # Actually, let's stick to the same logic as list_deposits:
-    # If not admin, filter by branch? 
-    # The user is likely an admin if they are syncing.
-    
+    # Re-query with eager loading
+    deposits_query = select(Deposit).options(selectinload(Deposit.employee)).where(Deposit.date == today)
     res_deposits = await db.execute(deposits_query)
     deposits = res_deposits.scalars().all()
-    
-    # 2. Expenses
+
     expenses_query = select(Expense).where(Expense.date == today)
     res_expenses = await db.execute(expenses_query)
     expenses = res_expenses.scalars().all()
@@ -53,27 +65,9 @@ async def generate_sql(
     sql_lines.append("-- Sync generated from Cloud App")
     sql_lines.append("-- --------------------------------")
     
-    # We need to handle NUMDEP incrementing. 
-    # In a SQL script, we can use a variable.
     sql_lines.append("SELECT @max_num := MAX(NUMDEP) FROM fdepense;")
     sql_lines.append("SET @next_num := IFNULL(@max_num, 0);")
     
-    for d in deposits:
-        # Fetch employee name? We need to eager load it or do a join.
-        # For now, let's just use a placeholder if lazy loading is an issue, 
-        # but we should probably eager load in the query.
-        # Let's assume we can access it or just use "Avance" if missing.
-        # Wait, `deposits` are ORM objects, if we access `d.employee` it might trigger a query.
-        # Since we are in async, implicit IO is not allowed.
-        # We need to update the query above to eager load.
-        pass 
-
-    # Re-query with eager loading
-    from sqlalchemy.orm import selectinload
-    deposits_query = select(Deposit).options(selectinload(Deposit.employee)).where(Deposit.date == today)
-    res_deposits = await db.execute(deposits_query)
-    deposits = res_deposits.scalars().all()
-
     for d in deposits:
         lib_dep = f"{d.employee.first_name} {d.employee.last_name}"
         if d.note:
@@ -97,3 +91,43 @@ async def generate_sql(
         media_type="application/sql",
         headers={"Content-Disposition": f"attachment; filename=sync_{today}.sql"}
     )
+
+@router.get("/backup")
+async def export_backup(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(api_require_permission("is_admin"))
+):
+    """
+    Export full cloud database as JSON (API version for AutoSync).
+    """
+    data_to_export = {}
+    
+    try:
+        # Fetch all tables
+        data_to_export["branches"] = (await db.execute(select(Branch))).scalars().all()
+        data_to_export["users"] = (await db.execute(select(User))).scalars().all()
+        data_to_export["roles"] = (await db.execute(select(Role))).scalars().all()
+        data_to_export["employees"] = (await db.execute(select(Employee))).scalars().all()
+        data_to_export["attendance"] = (await db.execute(select(Attendance))).scalars().all()
+        data_to_export["leaves"] = (await db.execute(select(Leave))).scalars().all()
+        data_to_export["deposits"] = (await db.execute(select(Deposit))).scalars().all()
+        data_to_export["expenses"] = (await db.execute(select(Expense))).scalars().all() 
+        data_to_export["pay_history"] = (await db.execute(select(Pay))).scalars().all()
+        data_to_export["loans"] = (await db.execute(select(Loan))).scalars().all()
+        data_to_export["loan_schedules"] = (await db.execute(select(LoanSchedule))).scalars().all()
+        data_to_export["loan_repayments"] = (await db.execute(select(LoanRepayment))).scalars().all()
+        data_to_export["audit_logs"] = (await db.execute(select(AuditLog).order_by(AuditLog.created_at))).scalars().all()
+        
+        # Serialize
+        json_content = json.dumps(data_to_export, cls=CustomJSONEncoder, indent=2, ensure_ascii=False)
+        
+        filename = f"cloud_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        
+        return Response(
+            content=json_content,
+            media_type="application/json",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

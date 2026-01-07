@@ -4,6 +4,8 @@ Bijouterie Zaher - Automatic Local Sync Agent
 This script runs on your PC and automatically syncs data from the cloud website
 to your local MySQL database (mah1303.fdepense).
 
+It also performs a FULL CLOUD BACKUP (JSON) after every successful sync.
+
 Run this script manually OR set it up as a Windows Scheduled Task for automatic sync.
 
 Usage:
@@ -29,7 +31,7 @@ LOCAL_DB_USER = "root"
 LOCAL_DB_PASSWORD = "6165"
 LOCAL_DB_SCHEMA = "mah1303"
 
-SYNC_USER_NAME = "BK ZAHER"  # Name that appears in UTIL column
+SYNC_USER_NAME = "BK ZAHER"  # Default Name (Fallback)
 
 # CODDEP codes
 CODDEP_EXPENSES = 2  # Dépenses
@@ -64,6 +66,8 @@ def get_unsynced_data(token):
     
     deposits = []
     expenses = []
+    payments = []
+    loans = []
     
     # Fetch Deposits
     try:
@@ -85,19 +89,10 @@ def get_unsynced_data(token):
     except Exception as e:
         print(f"[{datetime.now():%H:%M:%S}] Error fetching expenses: {e}")
 
-    # Fetch Payments (New)
-    payments = []
-    try:
-        resp = requests.get(f"{CLOUD_API_URL}/api/pay/", headers=headers, timeout=30)
-        if resp.status_code == 200:
-            all_payments = resp.json()
-            payments = [p for p in all_payments if p.get('date') == today_str]
-            print(f"[{datetime.now():%H:%M:%S}] Found {len(payments)} payments for today")
-    except Exception as e:
-        print(f"[{datetime.now():%H:%M:%S}] Error fetching payments: {e}")
-
+    # Fetch Payments (DISABLED/IGNORED per user request)
+    # Payments/Primes are NOT synced to local DB fdepense.
+    
     # Fetch Loans (New)
-    loans = []
     try:
         resp = requests.get(f"{CLOUD_API_URL}/api/loans/", headers=headers, timeout=30)
         if resp.status_code == 200:
@@ -113,18 +108,48 @@ def get_unsynced_data(token):
     return deposits, expenses, payments, loans
 
 
-def get_existing_numdeps(cursor):
-    """Get existing NUMDEP values to avoid duplicates."""
-    cursor.execute("SELECT NUMDEP FROM fdepense ORDER BY NUMDEP DESC LIMIT 200")
-    return set(row['NUMDEP'] for row in cursor.fetchall())
+def perform_backup(token):
+    """Download full cloud database backup (JSON)."""
+    backup_dir = "sauve"
+    if not os.path.exists(backup_dir):
+        os.makedirs(backup_dir)
+
+    print(f"[{datetime.now():%H:%M:%S}] Starting Cloud Backup download...")
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    try:
+        resp = requests.get(f"{CLOUD_API_URL}/api/sync/backup", headers=headers, stream=True, timeout=120)
+        if resp.status_code == 200:
+            # Extract filename from header or generate one
+            cd = resp.headers.get("content-disposition", "")
+            filename = f"cloud_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            if "filename=" in cd:
+                try:
+                    filename = cd.split("filename=")[1].strip('"')
+                except:
+                    pass
+            
+            filepath = os.path.join(backup_dir, filename)
+            
+            with open(filepath, 'wb') as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            print(f"[{datetime.now():%H:%M:%S}] [BACKUP] Saved Cloud Backup to: {filepath}")
+        else:
+            print(f"[{datetime.now():%H:%M:%S}] [BACKUP ERROR] API Error {resp.status_code}: {resp.text}")
+            
+    except Exception as e:
+        print(f"[{datetime.now():%H:%M:%S}] [BACKUP ERROR] Connection failed: {e}")
 
 
-def sync_to_local_mysql(deposits, expenses, payments, loans):
+def sync_to_local_mysql(token, deposits, expenses, payments, loans):
     """Insert data into local MySQL fdepense table."""
     if not deposits and not expenses and not payments and not loans:
         print(f"[{datetime.now():%H:%M:%S}] Nothing to sync")
         return 0
     
+    inserted = 0
     try:
         connection = pymysql.connect(
             host=LOCAL_DB_HOST,
@@ -150,8 +175,6 @@ def sync_to_local_mysql(deposits, expenses, payments, loans):
             )
             existing = set((row['LIBDEP'], float(row['MONTANT'])) for row in cursor.fetchall())
             
-            inserted = 0
-            
             # Process Deposits (CODDEP = 2)
             for d in deposits:
                 emp = d.get('employee') or {}
@@ -162,19 +185,17 @@ def sync_to_local_mysql(deposits, expenses, payments, loans):
                 else:
                     lib_dep = emp_name
                 
-                lib_dep = lib_dep[:45]  # LIBDEP max 45 chars
+                lib_dep = lib_dep[:45]
                 amount = float(d['amount'])
                 
-                # Skip if already exists
-                if (lib_dep, amount) in existing:
-                    continue
+                if (lib_dep, amount) in existing: continue
                 
                 current_num_dep += 1
-                # TYPE=0, MODREG='Espèces', BANQUE='', NUMPCE='', DATPCE=DATDEP, CODDEP=2, NUMDEP=n+1, MONTANT=amount, LIBDEP=note, DATDEP=date, NUM=0, UTIL=user
+                creator_name = (d.get('creator') or {}).get('full_name', SYNC_USER_NAME)[:20]
                 sql = """INSERT INTO fdepense 
                          (TYPE, MODREG, BANQUE, NUMPCE, DATPCE, CODDEP, NUMDEP, MONTANT, LIBDEP, DATDEP, NUM, UTIL)
                          VALUES (0, 'Espèces', '', '', %s, %s, %s, %s, %s, %s, 0, %s)"""
-                cursor.execute(sql, (d['date'], CODDEP_DEPOSITS, current_num_dep, amount, lib_dep, d['date'], SYNC_USER_NAME[:20]))
+                cursor.execute(sql, (d['date'], CODDEP_DEPOSITS, current_num_dep, amount, lib_dep, d['date'], creator_name))
                 inserted += 1
             
             # Process Expenses (CODDEP = 1)
@@ -182,43 +203,19 @@ def sync_to_local_mysql(deposits, expenses, payments, loans):
                 lib_dep = e.get('description', 'Dépense')[:45]
                 amount = float(e['amount'])
                 
-                # Skip if already exists
-                if (lib_dep, amount) in existing:
-                    continue
-                
-                current_num_dep += 1
-                # Same mapping for expenses
-                sql = """INSERT INTO fdepense 
-                         (TYPE, MODREG, BANQUE, NUMPCE, DATPCE, CODDEP, NUMDEP, MONTANT, LIBDEP, DATDEP, NUM, UTIL)
-                         VALUES (0, 'Espèces', '', '', %s, %s, %s, %s, %s, %s, 0, %s)"""
-                cursor.execute(sql, (e['date'], CODDEP_EXPENSES, current_num_dep, amount, lib_dep, e['date'], SYNC_USER_NAME[:20]))
-                inserted += 1
-            
-            # Process Payments & Primes (CODDEP = 2)
-            for p in payments:
-                emp = p.get('employee') or {}
-                emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
-                note = p.get('note', '') or ''
-                if p.get('pay_type') == 'prime_rendement':
-                     note = f"Prime: {note}"
-                
-                if note:
-                    lib_dep = f"{emp_name} - {note}"
-                else:
-                    lib_dep = emp_name
-                
-                lib_dep = lib_dep[:45]
-                amount = float(p['amount'])
-                
                 if (lib_dep, amount) in existing: continue
                 
                 current_num_dep += 1
+                creator_name = (e.get('creator') or {}).get('full_name', SYNC_USER_NAME)[:20]
                 sql = """INSERT INTO fdepense 
                          (TYPE, MODREG, BANQUE, NUMPCE, DATPCE, CODDEP, NUMDEP, MONTANT, LIBDEP, DATDEP, NUM, UTIL)
                          VALUES (0, 'Espèces', '', '', %s, %s, %s, %s, %s, %s, 0, %s)"""
-                cursor.execute(sql, (p['date'], CODDEP_EXPENSES, current_num_dep, amount, lib_dep, p['date'], SYNC_USER_NAME[:20]))
+                cursor.execute(sql, (e['date'], CODDEP_EXPENSES, current_num_dep, amount, lib_dep, e['date'], creator_name))
                 inserted += 1
-
+            
+            # Process Payments & Primes (SKIPPED)
+            # User request: "dont sync prime page".
+            
             # Process Loans (CODDEP = 1)
             for l in loans:
                 emp = l.get('employee') or {}
@@ -232,16 +229,19 @@ def sync_to_local_mysql(deposits, expenses, payments, loans):
                 if (lib_dep, amount) in existing: continue
                 
                 current_num_dep += 1
+                creator_name = (l.get('creator') or {}).get('full_name', SYNC_USER_NAME)[:20]
                 sql = """INSERT INTO fdepense 
                          (TYPE, MODREG, BANQUE, NUMPCE, DATPCE, CODDEP, NUMDEP, MONTANT, LIBDEP, DATDEP, NUM, UTIL)
                          VALUES (0, 'Espèces', '', '', %s, %s, %s, %s, %s, %s, 0, %s)"""
-                cursor.execute(sql, (l['start_date'], CODDEP_DEPOSITS, current_num_dep, amount, lib_dep, l['start_date'], SYNC_USER_NAME[:20]))
+                cursor.execute(sql, (l['start_date'], CODDEP_DEPOSITS, current_num_dep, amount, lib_dep, l['start_date'], creator_name))
                 inserted += 1
 
             connection.commit()
             
             if inserted > 0:
                 print(f"[{datetime.now():%H:%M:%S}] [OK] Synced {inserted} new records to MySQL")
+                # Perform Cloud Backup
+                perform_backup(token)
             else:
                 print(f"[{datetime.now():%H:%M:%S}] [INFO] All records already synced")
             
@@ -268,7 +268,8 @@ def run_sync():
         return
     
     deposits, expenses, payments, loans = get_unsynced_data(token)
-    sync_to_local_mysql(deposits, expenses, payments, loans)
+    # Pass token to sync function so it can use it for backup
+    sync_to_local_mysql(token, deposits, expenses, payments, loans)
 
 
 def main():
@@ -278,7 +279,7 @@ def main():
     print("=" * 60)
     print(f"  Cloud API: {CLOUD_API_URL}")
     print(f"  Local DB:  {LOCAL_DB_SCHEMA}@{LOCAL_DB_HOST}")
-    print(f"  Sync as:   {SYNC_USER_NAME}")
+    print(f"  Sync as:   (Dynamically detected via API)")
     print("=" * 60)
     print("\nPress Ctrl+C to stop\n")
     
@@ -292,7 +293,7 @@ def main():
             time.sleep(300)  # 5 minutes
             run_sync()
     except KeyboardInterrupt:
-        print("\n\n[{datetime.now():%H:%M:%S}] Sync agent stopped by user.")
+        print(f"\n\n[{datetime.now():%H:%M:%S}] Sync agent stopped by user.")
 
 
 if __name__ == "__main__":

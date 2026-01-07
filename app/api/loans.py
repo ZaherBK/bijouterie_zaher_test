@@ -44,7 +44,7 @@ async def _check_eligibility(db: AsyncSession, employee_id: int, amount_per_term
 @router.get("/", response_model=list[LoanOut], dependencies=[Depends(api_require_permission("can_manage_loans"))])
 async def list_loans(status: LoanStatus | None = None, employee_id: int | None = None, db: AsyncSession = Depends(get_db)):
     # Ensure employee is loaded to avoid Lazy Loading errors
-    q = select(Loan).options(selectinload(Loan.employee))
+    q = select(Loan).options(selectinload(Loan.employee), selectinload(Loan.creator))
     if status:
         q = q.where(Loan.status == status)
     if employee_id:

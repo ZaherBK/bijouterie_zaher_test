@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, delete
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from datetime import date
@@ -47,7 +48,7 @@ async def create_expense(
 async def list_expenses(db: AsyncSession = Depends(get_db)):
     """List all expenses."""
     # Add filtering logic here if needed (e.g., by date range)
-    res = await db.execute(select(Expense).order_by(Expense.date.desc(), Expense.created_at.desc()).limit(100))
+    res = await db.execute(select(Expense).options(selectinload(Expense.creator)).order_by(Expense.date.desc(), Expense.created_at.desc()).limit(100))
     return res.scalars().all()
 
 @router.post("/{expense_id}/delete", dependencies=[Depends(api_require_permission("can_manage_expenses"))])

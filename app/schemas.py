@@ -189,6 +189,7 @@ class DepositOut(DepositBase):
     created_by: int
     created_at: datetime
     employee: EmployeeOut
+    creator: Optional[UserOut] = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -209,6 +210,7 @@ class PayOut(PayBase):
     created_by: int
     created_at: datetime
     employee: EmployeeOut
+    creator: Optional[UserOut] = None
 # --- FIN DES NOUVEAUX SCHÉMAS ---
 
 
@@ -254,6 +256,7 @@ class LoanOut(LoanBase):
     next_due_on: date | None
     created_by: int
     employee: EmployeeOut | None = None
+    creator: Optional[UserOut] = None
     model_config = ConfigDict(from_attributes=True)
 
 class LoanScheduleOut(BaseModel):
@@ -282,6 +285,7 @@ class RepaymentOut(RepaymentCreate):
     id: int
     loan_id: int
     created_by: int
+    creator: Optional[UserOut] = None
     class Config: from_attributes = True
 
 
@@ -300,4 +304,5 @@ class ExpenseOut(ExpenseBase):
     id: int
     created_by: int
     created_at: datetime
+    creator: Optional[UserOut] = None
 # --- FIN DES NOUVEAUX SCHÉMAS ---
