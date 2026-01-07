@@ -65,6 +65,7 @@ class Role(Base):
             "can_manage_leaves": self.can_manage_leaves,
             "can_manage_deposits": self.can_manage_deposits,
             "can_manage_loans": self.can_manage_loans,
+            "can_manage_expenses": self.can_manage_expenses,
         }
 # --- FIN NOUVEAU MODÈLE ---
 
