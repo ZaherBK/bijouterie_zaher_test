@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request # Ensure this is imported
 # --- MODIFIÉ : Ajout de coalesce ---
-from sqlalchemy import select, delete, func, case, extract, or_
+from sqlalchemy import select, update, delete, func, and_, or_, desc, asc, text, case, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from . import models, schemas # Keep this general import if other parts of the file use models.XXX
@@ -2289,3 +2289,22 @@ async def loan_repay_web(
         request.url_for("loan_detail_page", loan_id=loan_id),
         status_code=status.HTTP_302_FOUND
     )
+
+# --- TEMPORARY FIX ROUTE ---
+@app.get("/fix_db_schema")
+async def fix_db_schema(db: AsyncSession = Depends(get_db)):
+    """
+    Executes necessary ALTER TABLE commands to fix the database schema
+    without requiring the user to access the SQL console.
+    """
+    try:
+        # 1. Add can_manage_expenses to roles
+        await db.execute(text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_manage_expenses BOOLEAN DEFAULT FALSE;"))
+        
+        # 2. Add has_cnss to employees (just in case)
+        await db.execute(text("ALTER TABLE employees ADD COLUMN IF NOT EXISTS has_cnss BOOLEAN DEFAULT FALSE;"))
+        
+        await db.commit()
+        return {"status": "success", "message": "Database schema updated successfully. Missing columns added."}
+    except Exception as e:
+        return {"status": "error", "message":str(e)}
