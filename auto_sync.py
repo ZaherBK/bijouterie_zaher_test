@@ -76,6 +76,8 @@ def get_unsynced_data(token):
             all_deposits = resp.json()
             deposits = [d for d in all_deposits if d.get('date') == today_str]
             print(f"[{datetime.now():%H:%M:%S}] Found {len(deposits)} deposits for today")
+        else:
+            print(f"[{datetime.now():%H:%M:%S}] [ERROR] Deposits API Error: {resp.status_code} {resp.text}")
     except Exception as e:
         print(f"[{datetime.now():%H:%M:%S}] Error fetching deposits: {e}")
     
@@ -86,6 +88,8 @@ def get_unsynced_data(token):
             all_expenses = resp.json()
             expenses = [e for e in all_expenses if e.get('date') == today_str]
             print(f"[{datetime.now():%H:%M:%S}] Found {len(expenses)} expenses for today")
+        else:
+            print(f"[{datetime.now():%H:%M:%S}] [ERROR] Expenses API Error: {resp.status_code} {resp.text}")
     except Exception as e:
         print(f"[{datetime.now():%H:%M:%S}] Error fetching expenses: {e}")
 

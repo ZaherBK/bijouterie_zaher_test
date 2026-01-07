@@ -155,7 +155,7 @@ class Leave(Base):  # Congé
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # Relations
     employee = relationship("Employee", back_populates="leaves")
-    creator = relationship("User", foreign_keys=[created_by])
+    creator = relationship("User")
 
 
 class Deposit(Base):  # Avance
@@ -169,7 +169,7 @@ class Deposit(Base):  # Avance
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # Relations
     employee = relationship("Employee", back_populates="deposits")
-    creator = relationship("User", foreign_keys=[created_by])
+    creator = relationship("User")
 
 
 class PayType(str, enum.Enum):
@@ -192,7 +192,7 @@ class Pay(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # Relations
     employee = relationship("Employee", back_populates="pay_history")
-    creator = relationship("User", foreign_keys=[created_by])
+    creator = relationship("User")
 
 
 class AuditLog(Base):
@@ -267,7 +267,7 @@ class Loan(Base):
 
     # --- CORRECTION FINALE AVEC LAMBDA ---
     employee = relationship("Employee", back_populates="loans")
-    creator = relationship("User", foreign_keys=[created_by])
+    creator = relationship("User")
 
     schedules = relationship(
         "LoanSchedule",
@@ -321,7 +321,7 @@ class LoanRepayment(Base):
 
     loan = relationship("Loan", back_populates="repayments")
     schedule = relationship("LoanSchedule", foreign_keys=[schedule_id])  # Spécifiez la clé étrangère pour éviter l'ambiguïté
-    creator = relationship("User", foreign_keys=[created_by])
+    creator = relationship("User")
 
 
 class LoanSettings(Base):
@@ -343,4 +343,4 @@ class Expense(Base):
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    creator = relationship("User", foreign_keys=[created_by])
+    creator = relationship("User")
