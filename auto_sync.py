@@ -20,7 +20,7 @@ import time
 import os
 
 # ===================== CONFIGURATION =====================
-CLOUD_API_URL = "https://bijouterie.onrender.com"  # Your hosted website URL
+CLOUD_API_URL = "https://hr-sync.onrender.com"  # Your hosted website URL
 CLOUD_EMAIL = "zaher@local"
 CLOUD_PASSWORD = "zah1405"
 
@@ -41,19 +41,19 @@ def login_to_cloud():
     """Login to cloud API and get access token."""
     try:
         resp = requests.post(
-            f"{CLOUD_API_URL}/api/auth/login",
+            f"{CLOUD_API_URL}/api/users/login",
             data={"username": CLOUD_EMAIL, "password": CLOUD_PASSWORD},
             timeout=30
         )
         if resp.status_code == 200:
             token = resp.json().get("access_token")
-            print(f"[{datetime.now():%H:%M:%S}] ✅ Logged in successfully")
+            print(f"[{datetime.now():%H:%M:%S}] [OK] Logged in successfully")
             return token
         else:
-            print(f"[{datetime.now():%H:%M:%S}] ❌ Login failed: {resp.text}")
+            print(f"[{datetime.now():%H:%M:%S}] [ERROR] Login failed: {resp.text}")
             return None
     except Exception as e:
-        print(f"[{datetime.now():%H:%M:%S}] ❌ Connection error: {e}")
+        print(f"[{datetime.now():%H:%M:%S}] [ERROR] Connection error: {e}")
         return None
 
 
@@ -130,9 +130,13 @@ def sync_to_local_mysql(deposits, expenses):
             for d in deposits:
                 emp = d.get('employee', {})
                 emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
-                if d.get('note'):
-                    emp_name += f" - {d['note']}"
-                lib_dep = emp_name[:45]  # LIBDEP max 45 chars
+                note = d.get('note', '')
+                if note:
+                    lib_dep = f"{emp_name} - {note}"
+                else:
+                    lib_dep = emp_name
+                
+                lib_dep = lib_dep[:45]  # LIBDEP max 45 chars
                 amount = float(d['amount'])
                 
                 # Skip if already exists
@@ -140,6 +144,7 @@ def sync_to_local_mysql(deposits, expenses):
                     continue
                 
                 current_num_dep += 1
+                # TYPE=0, MODREG='Espèces', BANQUE='', NUMPCE='', DATPCE=DATDEP, CODDEP=2, NUMDEP=n+1, MONTANT=amount, LIBDEP=note, DATDEP=date, NUM=0, UTIL=user
                 sql = """INSERT INTO fdepense 
                          (TYPE, MODREG, BANQUE, NUMPCE, DATPCE, CODDEP, NUMDEP, MONTANT, LIBDEP, DATDEP, NUM, UTIL)
                          VALUES (0, 'Espèces', '', '', %s, %s, %s, %s, %s, %s, 0, %s)"""
@@ -156,6 +161,7 @@ def sync_to_local_mysql(deposits, expenses):
                     continue
                 
                 current_num_dep += 1
+                # Same mapping for expenses
                 sql = """INSERT INTO fdepense 
                          (TYPE, MODREG, BANQUE, NUMPCE, DATPCE, CODDEP, NUMDEP, MONTANT, LIBDEP, DATDEP, NUM, UTIL)
                          VALUES (0, 'Espèces', '', '', %s, %s, %s, %s, %s, %s, 0, %s)"""
@@ -165,17 +171,17 @@ def sync_to_local_mysql(deposits, expenses):
             connection.commit()
             
             if inserted > 0:
-                print(f"[{datetime.now():%H:%M:%S}] ✅ Synced {inserted} new records to MySQL")
+                print(f"[{datetime.now():%H:%M:%S}] [OK] Synced {inserted} new records to MySQL")
             else:
-                print(f"[{datetime.now():%H:%M:%S}] ℹ️ All records already synced")
+                print(f"[{datetime.now():%H:%M:%S}] [INFO] All records already synced")
             
             return inserted
             
     except pymysql.MySQLError as e:
-        print(f"[{datetime.now():%H:%M:%S}] ❌ MySQL Error: {e}")
+        print(f"[{datetime.now():%H:%M:%S}] [ERROR] MySQL Error: {e}")
         return 0
     except Exception as e:
-        print(f"[{datetime.now():%H:%M:%S}] ❌ Error: {e}")
+        print(f"[{datetime.now():%H:%M:%S}] [ERROR] Error: {e}")
         return 0
     finally:
         if 'connection' in locals() and connection:

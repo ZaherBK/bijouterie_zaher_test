@@ -163,7 +163,6 @@ class Deposit(Base):  # Avance
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    is_synced: Mapped[bool] = mapped_column(Boolean, default=False)
     # Relations
     employee = relationship("Employee", back_populates="deposits")
 
@@ -336,4 +335,3 @@ class Expense(Base):
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    is_synced: Mapped[bool] = mapped_column(Boolean, default=False)
