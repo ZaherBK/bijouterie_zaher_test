@@ -107,7 +107,8 @@ def sync_to_local_mysql(deposits, expenses):
             password=LOCAL_DB_PASSWORD,
             database=LOCAL_DB_SCHEMA,
             cursorclass=pymysql.cursors.DictCursor,
-            connect_timeout=5
+            connect_timeout=5,
+            charset='latin1'  # Legacy MySQL 4.1 support
         )
         
         with connection.cursor() as cursor:
