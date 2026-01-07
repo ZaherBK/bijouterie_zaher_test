@@ -56,25 +56,9 @@ async def seed():
                     email="zaher@local",
                     full_name="BK ZAHER",
                     role=Role.admin, # Rôle admin
-                    hashed_password=hash_password("zah1405"), # Utiliser la bonne fonction
+                    hashed_password=hash_password("5"), # Utiliser la bonne fonction
                     is_active=True,
                     branch_id=None # Admin n'est pas lié à un magasin
-                ),
-                User(
-                    email="ariana@local",
-                    full_name="Ariana (Manager)",
-                    role=Role.manager,
-                    hashed_password=hash_password("ar123"),
-                    is_active=True,
-                    branch_id=branch_ariana.id # Lié au Magasin Ariana
-                ),
-                User(
-                    email="nabeul@local",
-                    full_name="Nabeul (Manager)",
-                    role=Role.manager,
-                    hashed_password=hash_password("na123"),
-                    is_active=True,
-                    branch_id=branch_nabeul.id # Lié au Magasin Nabeul
                 ),
             ]
             session.add_all(users_to_create)

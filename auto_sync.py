@@ -22,7 +22,7 @@ import os
 # ===================== CONFIGURATION =====================
 CLOUD_API_URL = "https://hr-sync.onrender.com"  # Your hosted website URL
 CLOUD_EMAIL = "zaher@local"
-CLOUD_PASSWORD = "zah1405"
+CLOUD_PASSWORD = "5"
 
 LOCAL_DB_HOST = "localhost"
 LOCAL_DB_USER = "root"
