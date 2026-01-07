@@ -84,8 +84,31 @@ def get_unsynced_data(token):
             print(f"[{datetime.now():%H:%M:%S}] Found {len(expenses)} expenses for today")
     except Exception as e:
         print(f"[{datetime.now():%H:%M:%S}] Error fetching expenses: {e}")
+
+    # Fetch Payments (New)
+    payments = []
+    try:
+        resp = requests.get(f"{CLOUD_API_URL}/api/pay/", headers=headers, timeout=30)
+        if resp.status_code == 200:
+            all_payments = resp.json()
+            payments = [p for p in all_payments if p.get('date') == today_str]
+            print(f"[{datetime.now():%H:%M:%S}] Found {len(payments)} payments for today")
+    except Exception as e:
+        print(f"[{datetime.now():%H:%M:%S}] Error fetching payments: {e}")
+
+    # Fetch Loans (New)
+    loans = []
+    try:
+        resp = requests.get(f"{CLOUD_API_URL}/api/loans/", headers=headers, timeout=30)
+        if resp.status_code == 200:
+            all_loans = resp.json()
+            # Filter by start_date == today
+            loans = [l for l in all_loans if l.get('start_date') == today_str]
+            print(f"[{datetime.now():%H:%M:%S}] Found {len(loans)} loans for today")
+    except Exception as e:
+        print(f"[{datetime.now():%H:%M:%S}] Error fetching loans: {e}")
     
-    return deposits, expenses
+    return deposits, expenses, payments, loans
 
 
 def get_existing_numdeps(cursor):
@@ -94,9 +117,9 @@ def get_existing_numdeps(cursor):
     return set(row['NUMDEP'] for row in cursor.fetchall())
 
 
-def sync_to_local_mysql(deposits, expenses):
+def sync_to_local_mysql(deposits, expenses, payments, loans):
     """Insert data into local MySQL fdepense table."""
-    if not deposits and not expenses:
+    if not deposits and not expenses and not payments and not loans:
         print(f"[{datetime.now():%H:%M:%S}] Nothing to sync")
         return 0
     
@@ -169,6 +192,50 @@ def sync_to_local_mysql(deposits, expenses):
                 cursor.execute(sql, (e['date'], CODDEP_EXPENSES, current_num_dep, amount, lib_dep, e['date'], SYNC_USER_NAME[:20]))
                 inserted += 1
             
+            # Process Payments & Primes (CODDEP = 2)
+            for p in payments:
+                emp = p.get('employee', {})
+                emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+                note = p.get('note', '') or ''
+                if p.get('pay_type') == 'prime_rendement':
+                     note = f"Prime: {note}"
+                
+                if note:
+                    lib_dep = f"{emp_name} - {note}"
+                else:
+                    lib_dep = emp_name
+                
+                lib_dep = lib_dep[:45]
+                amount = float(p['amount'])
+                
+                if (lib_dep, amount) in existing: continue
+                
+                current_num_dep += 1
+                sql = """INSERT INTO fdepense 
+                         (TYPE, MODREG, BANQUE, NUMPCE, DATPCE, CODDEP, NUMDEP, MONTANT, LIBDEP, DATDEP, NUM, UTIL)
+                         VALUES (0, 'Espèces', '', '', %s, %s, %s, %s, %s, %s, 0, %s)"""
+                cursor.execute(sql, (p['date'], CODDEP_EXPENSES, current_num_dep, amount, lib_dep, p['date'], SYNC_USER_NAME[:20]))
+                inserted += 1
+
+            # Process Loans (CODDEP = 1)
+            for l in loans:
+                emp = l.get('employee', {})
+                emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+                note = l.get('notes', '') or 'Prêt'
+                
+                lib_dep = f"{emp_name} - {note}"
+                lib_dep = lib_dep[:45]
+                amount = float(l['principal'])
+                
+                if (lib_dep, amount) in existing: continue
+                
+                current_num_dep += 1
+                sql = """INSERT INTO fdepense 
+                         (TYPE, MODREG, BANQUE, NUMPCE, DATPCE, CODDEP, NUMDEP, MONTANT, LIBDEP, DATDEP, NUM, UTIL)
+                         VALUES (0, 'Espèces', '', '', %s, %s, %s, %s, %s, %s, 0, %s)"""
+                cursor.execute(sql, (l['start_date'], CODDEP_DEPOSITS, current_num_dep, amount, lib_dep, l['start_date'], SYNC_USER_NAME[:20]))
+                inserted += 1
+
             connection.commit()
             
             if inserted > 0:
@@ -198,8 +265,8 @@ def run_sync():
     if not token:
         return
     
-    deposits, expenses = get_unsynced_data(token)
-    sync_to_local_mysql(deposits, expenses)
+    deposits, expenses, payments, loans = get_unsynced_data(token)
+    sync_to_local_mysql(deposits, expenses, payments, loans)
 
 
 def main():

@@ -208,6 +208,7 @@ class PayOut(PayBase):
     id: int
     created_by: int
     created_at: datetime
+    employee: EmployeeOut
 # --- FIN DES NOUVEAUX SCHÉMAS ---
 
 
@@ -252,6 +253,7 @@ class LoanOut(LoanBase):
     outstanding_principal: Decimal
     next_due_on: date | None
     created_by: int
+    employee: EmployeeOut
     class Config: from_attributes = True
 
 class LoanScheduleOut(BaseModel):
