@@ -1,0 +1,223 @@
+"""
+Bijouterie Zaher - Automatic Local Sync Agent
+==============================================
+This script runs on your PC and automatically syncs data from the cloud website
+to your local MySQL database (mah1303.fdepense).
+
+Run this script manually OR set it up as a Windows Scheduled Task for automatic sync.
+
+Usage:
+    python auto_sync.py
+    
+To run automatically every 5 minutes, create a Windows Scheduled Task.
+"""
+
+import requests
+import pymysql
+import pymysql.cursors
+from datetime import date, datetime, timedelta
+import time
+import os
+
+# ===================== CONFIGURATION =====================
+CLOUD_API_URL = "https://bijouterie.onrender.com"  # Your hosted website URL
+CLOUD_EMAIL = "zaher@local"
+CLOUD_PASSWORD = "zah1405"
+
+LOCAL_DB_HOST = "localhost"
+LOCAL_DB_USER = "root"
+LOCAL_DB_PASSWORD = "6165"
+LOCAL_DB_SCHEMA = "mah1303"
+
+SYNC_USER_NAME = "BK ZAHER"  # Name that appears in UTIL column
+
+# CODDEP codes
+CODDEP_EXPENSES = 1  # Dépenses
+CODDEP_DEPOSITS = 2  # Avances
+# =========================================================
+
+
+def login_to_cloud():
+    """Login to cloud API and get access token."""
+    try:
+        resp = requests.post(
+            f"{CLOUD_API_URL}/api/auth/login",
+            data={"username": CLOUD_EMAIL, "password": CLOUD_PASSWORD},
+            timeout=30
+        )
+        if resp.status_code == 200:
+            token = resp.json().get("access_token")
+            print(f"[{datetime.now():%H:%M:%S}] ✅ Logged in successfully")
+            return token
+        else:
+            print(f"[{datetime.now():%H:%M:%S}] ❌ Login failed: {resp.text}")
+            return None
+    except Exception as e:
+        print(f"[{datetime.now():%H:%M:%S}] ❌ Connection error: {e}")
+        return None
+
+
+def get_unsynced_data(token):
+    """Fetch today's deposits and expenses from cloud API."""
+    headers = {"Authorization": f"Bearer {token}"}
+    today_str = date.today().isoformat()
+    
+    deposits = []
+    expenses = []
+    
+    # Fetch Deposits
+    try:
+        resp = requests.get(f"{CLOUD_API_URL}/api/deposits/", headers=headers, timeout=30)
+        if resp.status_code == 200:
+            all_deposits = resp.json()
+            deposits = [d for d in all_deposits if d.get('date') == today_str]
+            print(f"[{datetime.now():%H:%M:%S}] Found {len(deposits)} deposits for today")
+    except Exception as e:
+        print(f"[{datetime.now():%H:%M:%S}] Error fetching deposits: {e}")
+    
+    # Fetch Expenses
+    try:
+        resp = requests.get(f"{CLOUD_API_URL}/api/expenses/", headers=headers, timeout=30)
+        if resp.status_code == 200:
+            all_expenses = resp.json()
+            expenses = [e for e in all_expenses if e.get('date') == today_str]
+            print(f"[{datetime.now():%H:%M:%S}] Found {len(expenses)} expenses for today")
+    except Exception as e:
+        print(f"[{datetime.now():%H:%M:%S}] Error fetching expenses: {e}")
+    
+    return deposits, expenses
+
+
+def get_existing_numdeps(cursor):
+    """Get existing NUMDEP values to avoid duplicates."""
+    cursor.execute("SELECT NUMDEP FROM fdepense ORDER BY NUMDEP DESC LIMIT 200")
+    return set(row['NUMDEP'] for row in cursor.fetchall())
+
+
+def sync_to_local_mysql(deposits, expenses):
+    """Insert data into local MySQL fdepense table."""
+    if not deposits and not expenses:
+        print(f"[{datetime.now():%H:%M:%S}] Nothing to sync")
+        return 0
+    
+    try:
+        connection = pymysql.connect(
+            host=LOCAL_DB_HOST,
+            user=LOCAL_DB_USER,
+            password=LOCAL_DB_PASSWORD,
+            database=LOCAL_DB_SCHEMA,
+            cursorclass=pymysql.cursors.DictCursor,
+            connect_timeout=5
+        )
+        
+        with connection.cursor() as cursor:
+            # Get last NUMDEP
+            cursor.execute("SELECT MAX(NUMDEP) as max_num FROM fdepense")
+            result = cursor.fetchone()
+            current_num_dep = int(result['max_num']) if result and result['max_num'] else 0
+            
+            # Get existing to avoid duplicates (check by LIBDEP + DATDEP + MONTANT)
+            today_str = date.today().strftime('%Y-%m-%d')
+            cursor.execute(
+                "SELECT LIBDEP, MONTANT FROM fdepense WHERE DATDEP = %s",
+                (today_str,)
+            )
+            existing = set((row['LIBDEP'], float(row['MONTANT'])) for row in cursor.fetchall())
+            
+            inserted = 0
+            
+            # Process Deposits (CODDEP = 2)
+            for d in deposits:
+                emp = d.get('employee', {})
+                emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+                if d.get('note'):
+                    emp_name += f" - {d['note']}"
+                lib_dep = emp_name[:45]  # LIBDEP max 45 chars
+                amount = float(d['amount'])
+                
+                # Skip if already exists
+                if (lib_dep, amount) in existing:
+                    continue
+                
+                current_num_dep += 1
+                sql = """INSERT INTO fdepense 
+                         (TYPE, MODREG, BANQUE, NUMPCE, DATPCE, CODDEP, NUMDEP, MONTANT, LIBDEP, DATDEP, NUM, UTIL)
+                         VALUES (0, 'Espèces', '', '', %s, %s, %s, %s, %s, %s, 0, %s)"""
+                cursor.execute(sql, (d['date'], CODDEP_DEPOSITS, current_num_dep, amount, lib_dep, d['date'], SYNC_USER_NAME[:20]))
+                inserted += 1
+            
+            # Process Expenses (CODDEP = 1)
+            for e in expenses:
+                lib_dep = e.get('description', 'Dépense')[:45]
+                amount = float(e['amount'])
+                
+                # Skip if already exists
+                if (lib_dep, amount) in existing:
+                    continue
+                
+                current_num_dep += 1
+                sql = """INSERT INTO fdepense 
+                         (TYPE, MODREG, BANQUE, NUMPCE, DATPCE, CODDEP, NUMDEP, MONTANT, LIBDEP, DATDEP, NUM, UTIL)
+                         VALUES (0, 'Espèces', '', '', %s, %s, %s, %s, %s, %s, 0, %s)"""
+                cursor.execute(sql, (e['date'], CODDEP_EXPENSES, current_num_dep, amount, lib_dep, e['date'], SYNC_USER_NAME[:20]))
+                inserted += 1
+            
+            connection.commit()
+            
+            if inserted > 0:
+                print(f"[{datetime.now():%H:%M:%S}] ✅ Synced {inserted} new records to MySQL")
+            else:
+                print(f"[{datetime.now():%H:%M:%S}] ℹ️ All records already synced")
+            
+            return inserted
+            
+    except pymysql.MySQLError as e:
+        print(f"[{datetime.now():%H:%M:%S}] ❌ MySQL Error: {e}")
+        return 0
+    except Exception as e:
+        print(f"[{datetime.now():%H:%M:%S}] ❌ Error: {e}")
+        return 0
+    finally:
+        if 'connection' in locals() and connection:
+            connection.close()
+
+
+def run_sync():
+    """Run one sync cycle."""
+    print(f"\n{'='*50}")
+    print(f"[{datetime.now():%H:%M:%S}] Starting sync cycle...")
+    
+    token = login_to_cloud()
+    if not token:
+        return
+    
+    deposits, expenses = get_unsynced_data(token)
+    sync_to_local_mysql(deposits, expenses)
+
+
+def main():
+    """Main entry point - runs continuous sync loop."""
+    print("=" * 60)
+    print("  Bijouterie Zaher - Automatic Local Sync Agent")
+    print("=" * 60)
+    print(f"  Cloud API: {CLOUD_API_URL}")
+    print(f"  Local DB:  {LOCAL_DB_SCHEMA}@{LOCAL_DB_HOST}")
+    print(f"  Sync as:   {SYNC_USER_NAME}")
+    print("=" * 60)
+    print("\nPress Ctrl+C to stop\n")
+    
+    # Run initial sync
+    run_sync()
+    
+    # Continuous loop - sync every 5 minutes
+    try:
+        while True:
+            print(f"\n[{datetime.now():%H:%M:%S}] Waiting 5 minutes until next sync...")
+            time.sleep(300)  # 5 minutes
+            run_sync()
+    except KeyboardInterrupt:
+        print("\n\n[{datetime.now():%H:%M:%S}] Sync agent stopped by user.")
+
+
+if __name__ == "__main__":
+    main()

@@ -54,7 +54,7 @@ async def seed():
             users_to_create = [
                 User(
                     email="zaher@local",
-                    full_name="Zaher (Admin)",
+                    full_name="BK ZAHER",
                     role=Role.admin, # Rôle admin
                     hashed_password=hash_password("zah1405"), # Utiliser la bonne fonction
                     is_active=True,

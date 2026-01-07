@@ -88,7 +88,7 @@ def sync_deposits_to_legacy(
                     lib_dep,            # LIBDEP
                     deposit['date'],    # DATDEP
                     0,                  # NUM
-                    user_name           # UTIL
+                    user_name[:20]      # UTIL (truncated to 20 chars)
                 )
                 
                 cursor.execute(sql, values)
