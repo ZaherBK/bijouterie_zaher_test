@@ -313,7 +313,7 @@ async def home(
             user_is_admin=permissions_dict.get("is_admin", False),
             branch_id=current_user.branch_id, # Use branch_id from the full user object
              # Fetch a broader range of activities for the admin dashboard view
-            entity_types=["leave", "attendance", "deposit", "pay", "loan", "user", "role", "employee", "branch", "all_logs"],
+            entity_types=["leave", "attendance", "deposit", "pay", "loan", "expense", "user", "role", "employee", "branch", "all_logs"],
             limit=15 # Limit to the latest 15 activities for the dashboard
         )
         # --- END FIX ---
@@ -707,6 +707,7 @@ async def expenses_page(
 @app.post("/expenses/create", name="expenses_create")
 async def expenses_create(
     request: Request,
+    description: Annotated[str, Form()],
     amount: Annotated[Decimal, Form()],
     date: Annotated[dt_date, Form()],
     db: AsyncSession = Depends(get_db),
