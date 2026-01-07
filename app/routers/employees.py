@@ -43,10 +43,11 @@ async def list_employees(db: AsyncSession = Depends(get_db)):
     dependencies=[Depends(api_require_permission("can_manage_employees"))]
 )
 async def delete_employee(employee_id: int, db: AsyncSession = Depends(get_db)):
-    """Soft delete an employee."""
+    """Hard delete an employee (Remove from DB)."""
     emp = await db.get(Employee, employee_id)
     if emp:
-        emp.active = False
+        # User requested actual removal from the database
+        await db.delete(emp)
         await db.commit()
     
     # Redirect to the main employees page (web route)

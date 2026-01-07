@@ -730,6 +730,7 @@ async def expenses_delete_web(
     expense = res.scalar_one_or_none()
     
     if expense:
+        # Hard Delete: Remove from database as requested
         await db.delete(expense)
         await db.commit()
         await log(
@@ -1742,6 +1743,7 @@ async def clear_transaction_logs(
         await db.execute(delete(Loan))
         await db.execute(delete(Pay))
         await db.execute(delete(Deposit))
+        await db.execute(delete(models.Expense)) # Added Expenses
         await db.execute(delete(Leave))
         await db.execute(delete(Attendance))
 
