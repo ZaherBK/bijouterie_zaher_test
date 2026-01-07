@@ -21,7 +21,7 @@ class SyncRequest(BaseModel):
     password: str = "6165"
     coddep: int = 1 # Default to 1 for Expenses
 
-@router.post("/", response_model=ExpenseOut, dependencies=[Depends(api_require_permission("can_view_settings"))]) # Using 'can_view_settings' as a proxy for general management, or create a new permission
+@router.post("/", response_model=ExpenseOut, dependencies=[Depends(api_require_permission("can_manage_expenses"))])
 async def create_expense(
     payload: ExpenseCreate, 
     db: AsyncSession = Depends(get_db), 
@@ -50,7 +50,7 @@ async def list_expenses(db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(Expense).order_by(Expense.date.desc(), Expense.created_at.desc()).limit(100))
     return res.scalars().all()
 
-@router.post("/{expense_id}/delete", dependencies=[Depends(api_require_permission("is_admin"))])
+@router.post("/{expense_id}/delete", dependencies=[Depends(api_require_permission("can_manage_expenses"))])
 async def delete_expense(
     expense_id: int,
     db: AsyncSession = Depends(get_db),

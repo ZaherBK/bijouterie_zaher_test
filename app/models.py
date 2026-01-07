@@ -42,6 +42,7 @@ class Role(Base):
     can_manage_leaves: Mapped[bool] = mapped_column(Boolean, default=False)
     can_manage_deposits: Mapped[bool] = mapped_column(Boolean, default=False)
     can_manage_loans: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_manage_expenses: Mapped[bool] = mapped_column(Boolean, default=False) # Nouveau permission
 
     # Relations
     users = relationship("User", back_populates="permissions")
@@ -103,6 +104,7 @@ class Employee(Base):
     branch_id: Mapped[int] = mapped_column(ForeignKey("branches.id"))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     salary: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    has_cnss: Mapped[bool] = mapped_column(Boolean, default=False) # Checkbox CNSS
 
     # Relations
     branch = relationship("Branch", back_populates="employees")

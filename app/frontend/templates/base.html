@@ -73,7 +73,7 @@
 
             {% if user.permissions.is_admin or user.permissions.can_manage_absences or
             user.permissions.can_manage_deposits or user.permissions.can_manage_leaves or
-            user.permissions.can_manage_pay %}
+            user.permissions.can_manage_pay or user.permissions.can_manage_expenses %}
             <h6 class="sidebar-heading px-3 mt-3 mb-1">Gestion</h6>
             {% endif %}
 
@@ -95,7 +95,7 @@
             </li>
             {% endif %}
 
-            {% if user.permissions.is_admin or user.permissions.can_view_settings %}
+            {% if user.permissions.is_admin or user.permissions.can_manage_expenses %}
             <li class="nav-item">
               <a class="nav-link {% if request.url.path == url_for('expenses_page') %}active{% endif %}"
                 href="{{ url_for('expenses_page') }}">

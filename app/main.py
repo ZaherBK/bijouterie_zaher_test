@@ -412,7 +412,8 @@ async def employees_create(
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(web_require_permission("can_manage_employees")),
     cin: Annotated[str, Form()] = None,
-    salary: Annotated[Decimal, Form()] = None
+    salary: Annotated[Decimal, Form()] = None,
+    has_cnss: bool = Form(False) # Checkbox (if unchecked, sends False/None)
 ):
     permissions = user.get("permissions", {})
 
@@ -429,7 +430,8 @@ async def employees_create(
 
     new_employee = Employee(
         first_name=first_name, last_name=last_name, cin=cin or None,
-        position=position, branch_id=branch_id, salary=salary, active=True
+        position=position, branch_id=branch_id, salary=salary, active=True,
+        has_cnss=has_cnss
     )
     db.add(new_employee)
     await db.commit()
@@ -677,7 +679,7 @@ async def deposits_delete(
 async def expenses_page(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(web_require_permission("can_view_settings")) # Using can_view_settings as proxy
+    user: dict = Depends(web_require_permission("can_manage_expenses"))
 ):
     # Fetch expenses
     expenses_query = select(models.Expense).order_by(models.Expense.date.desc(), models.Expense.created_at.desc()).limit(100)
@@ -693,11 +695,10 @@ async def expenses_page(
 @app.post("/expenses/create", name="expenses_create")
 async def expenses_create(
     request: Request,
-    description: Annotated[str, Form()],
     amount: Annotated[Decimal, Form()],
     date: Annotated[dt_date, Form()],
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(web_require_permission("can_view_settings")),
+    user: dict = Depends(web_require_permission("can_manage_expenses")),
     category: Annotated[str, Form()] = None
 ):
     if amount <= 0:
@@ -724,7 +725,8 @@ async def expenses_delete_web(
     request: Request,
     expense_id: int,
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(web_require_permission("is_admin"))
+    # Require specific permission for consistency (Admin still overrides)
+    user: dict = Depends(web_require_permission("can_manage_expenses"))
 ):
     res = await db.execute(select(models.Expense).where(models.Expense.id == expense_id))
     expense = res.scalar_one_or_none()
@@ -1493,6 +1495,7 @@ async def roles_update(
     role_to_update.can_manage_leaves = "can_manage_leaves" in form_data
     role_to_update.can_manage_deposits = "can_manage_deposits" in form_data
     role_to_update.can_manage_loans = "can_manage_loans" in form_data
+    role_to_update.can_manage_expenses = "can_manage_expenses" in form_data
 
     await db.commit()
 
@@ -1793,7 +1796,8 @@ async def export_data(
         data_to_export["loan_schedules"] = (await db.execute(select(LoanSchedule))).scalars().all()
         data_to_export["loan_repayments"] = (await db.execute(select(LoanRepayment))).scalars().all()
         data_to_export["roles"] = (await db.execute(select(Role))).scalars().all()
-        data_to_export["audit_logs"] = (await db.execute(select(AuditLog).order_by(AuditLog.created_at))).scalars().all() # Add this line
+        data_to_export["expenses"] = (await db.execute(select(models.Expense))).scalars().all() # Added Expenses
+        data_to_export["audit_logs"] = (await db.execute(select(AuditLog).order_by(AuditLog.created_at))).scalars().all()
 
 
     except Exception as e:
@@ -1847,8 +1851,10 @@ async def import_data(
         await db.execute(delete(Deposit))
         await db.execute(delete(Leave))
         await db.execute(delete(Attendance))
+        await db.execute(delete(models.Expense)) # Added
         await db.execute(delete(Employee))
         await db.execute(delete(User))
+        await db.execute(delete(Role)) # Added Role deletion (after User)
         await db.execute(delete(Branch))
 
         # --- RÉINSERTION DES DONNÉES ---
@@ -1867,6 +1873,27 @@ async def import_data(
             for item in data["branches"]:
                 item = _parse_dates(item, datetime_fields=['created_at'])
                 db.add(Branch(**item))
+        await db.flush()
+
+        if "roles" in data:
+             for item in data["roles"]:
+                 item = _parse_dates(item, datetime_fields=['created_at'])
+                 # Ensure defaults for permissions if missing
+                 item.setdefault('can_manage_users', False)
+                 item.setdefault('can_manage_roles', False)
+                 item.setdefault('can_manage_branches', False)
+                 item.setdefault('can_view_settings', False)
+                 item.setdefault('can_clear_logs', False)
+                 item.setdefault('can_manage_employees', False)
+                 item.setdefault('can_view_reports', False)
+                 item.setdefault('can_manage_pay', False)
+                 item.setdefault('can_manage_absences', False)
+                 item.setdefault('can_manage_leaves', False)
+                 item.setdefault('can_manage_deposits', False)
+                 item.setdefault('can_manage_loans', False)
+                 item.setdefault('can_manage_expenses', False) # New permission
+
+                 db.add(Role(**item))
         await db.flush()
 
         if "users" in data:
@@ -1925,6 +1952,14 @@ async def import_data(
                 if item.get('employee_id') is None: continue
                 item.setdefault('amount', 0.0)
                 db.add(Deposit(**item))
+
+        if "expenses" in data:
+            for item in data["expenses"]:
+                 item = _parse_dates(item, date_fields=['date'], datetime_fields=['created_at'])
+                 if item.get('created_by') is None: 
+                     # Fallback to first admin if missing
+                     item['created_by'] = user['id'] 
+                 db.add(models.Expense(**item))
 
         if "audit_logs" in data:
             print(f"Importation de {len(data['audit_logs'])} entrées d'audit log...") # Optional: Add logging
