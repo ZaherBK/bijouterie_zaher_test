@@ -155,6 +155,18 @@ async def on_startup() -> None:
 
     try:
         async with AsyncSessionLocal() as session:
+            # --- EMERGENCY MIGRATION AT STARTUP ---
+            try:
+                print("Checking DB Schema for missing columns...")
+                await session.execute(text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_manage_expenses BOOLEAN DEFAULT FALSE;"))
+                await session.execute(text("ALTER TABLE employees ADD COLUMN IF NOT EXISTS has_cnss BOOLEAN DEFAULT FALSE;"))
+                await session.commit()
+                print("DB Schema verified.")
+            except Exception as e_mig:
+                print(f"Migration step warning: {e_mig}")
+                await session.rollback()
+            # --------------------------------------
+
             res_admin_role = await session.execute(select(Role).where(Role.name == "Admin"))
             admin_role = res_admin_role.scalar_one_or_none()
 
@@ -166,7 +178,7 @@ async def on_startup() -> None:
                     can_manage_branches=True, can_view_settings=True, can_clear_logs=True,
                     can_manage_employees=True, can_view_reports=True, can_manage_pay=True,
                     can_manage_absences=True, can_manage_leaves=True, can_manage_deposits=True,
-                    can_manage_loans=True
+                    can_manage_loans=True, can_manage_expenses=True
                 )
                 manager_role = Role(
                     name="Manager", is_admin=False, can_manage_users=False, can_manage_roles=False,
