@@ -61,7 +61,7 @@ class Token(BaseModel):
     token_type: str = "bearer"
 
 class UserBase(BaseModel):
-    email: EmailStr
+    email: str
     full_name: str
     # --- MODIFIÉ ---
     role_id: int
@@ -75,7 +75,8 @@ class UserCreate(UserBase):
 class UserOut(UserBase):
     id: int
     # --- AJOUTÉ : Inclure les infos du rôle ---
-    role: RoleOut
+    # --- AJOUTÉ : Inclure les infos du rôle (Alias 'permissions' model -> 'role' schema) ---
+    role: RoleOut = Field(validation_alias="permissions")
     # --- FIN AJOUTÉ ---
     model_config = ConfigDict(from_attributes=True)
 
