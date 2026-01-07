@@ -39,9 +39,15 @@ async def list_employees(db: AsyncSession = Depends(get_db)):
 
 @router.post(
     "/delete/{employee_id}",
-    name="employees_delete",   # ← أضِف الاسم
+    name="employees_delete",
     dependencies=[Depends(api_require_permission("can_manage_employees"))]
 )
 async def delete_employee(employee_id: int, db: AsyncSession = Depends(get_db)):
-    ...
+    """Soft delete an employee."""
+    emp = await db.get(Employee, employee_id)
+    if emp:
+        emp.active = False
+        await db.commit()
+    
+    # Redirect to the main employees page (web route)
     return RedirectResponse(url="/employees", status_code=status.HTTP_303_SEE_OTHER)
