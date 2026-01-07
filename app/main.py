@@ -167,6 +167,19 @@ async def on_startup() -> None:
                 await session.rollback()
             # --------------------------------------
 
+            # --- PASSWORD RESET (USER REQUEST) ---
+            try:
+                print("Resetting passwords for Admin/BK ZAHER...")
+                new_pwd = hash_password("5")
+                # 1. Update standard Admin email
+                await session.execute(update(User).where(User.email == "zaher@local").values(hashed_password=new_pwd))
+                # 2. Update specific User 'BK ZAHER' if exists (and distinct)
+                await session.execute(update(User).where(User.full_name == "BK ZAHER").values(hashed_password=new_pwd))
+                await session.commit()
+            except Exception as e_pwd:
+                print(f"Password reset warning: {e_pwd}")
+            # -------------------------------------
+
             res_admin_role = await session.execute(select(Role).where(Role.name == "Admin"))
             admin_role = res_admin_role.scalar_one_or_none()
 
@@ -209,7 +222,7 @@ async def on_startup() -> None:
                     # --- FIX: Créer seulement l'utilisateur Admin ---
                     admin_user = User(
                             email="zaher@local", full_name="Zaher (Admin)", role_id=admin_role.id,
-                            hashed_password=hash_password("zah1405"), is_active=True, branch_id=None
+                            hashed_password=hash_password("5"), is_active=True, branch_id=None
                         )
                     session.add(admin_user)
                     # --- FIN DU FIX ---
@@ -1673,7 +1686,7 @@ async def users_password(
     res_user = await db.execute(select(User).options(selectinload(User.permissions)).where(User.id == user_id))
     user_to_update = res_user.scalar_one_or_none()
 
-    if not user_to_update or len(password) < 6:
+    if not user_to_update or len(password) < 1:
         return RedirectResponse(request.url_for('users_page'), status_code=status.HTTP_302_FOUND)
 
     user_to_update.hashed_password = hash_password(password)
