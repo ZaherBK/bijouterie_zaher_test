@@ -154,7 +154,7 @@ def sync_to_local_mysql(deposits, expenses, payments, loans):
             
             # Process Deposits (CODDEP = 2)
             for d in deposits:
-                emp = d.get('employee', {})
+                emp = d.get('employee') or {}
                 emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
                 note = d.get('note', '')
                 if note:
@@ -196,7 +196,7 @@ def sync_to_local_mysql(deposits, expenses, payments, loans):
             
             # Process Payments & Primes (CODDEP = 2)
             for p in payments:
-                emp = p.get('employee', {})
+                emp = p.get('employee') or {}
                 emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
                 note = p.get('note', '') or ''
                 if p.get('pay_type') == 'prime_rendement':
@@ -221,7 +221,7 @@ def sync_to_local_mysql(deposits, expenses, payments, loans):
 
             # Process Loans (CODDEP = 1)
             for l in loans:
-                emp = l.get('employee', {})
+                emp = l.get('employee') or {}
                 emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
                 note = l.get('notes', '') or 'Prêt'
                 

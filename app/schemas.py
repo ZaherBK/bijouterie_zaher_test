@@ -253,8 +253,8 @@ class LoanOut(LoanBase):
     outstanding_principal: Decimal
     next_due_on: date | None
     created_by: int
-    employee: EmployeeOut
-    class Config: from_attributes = True
+    employee: EmployeeOut | None = None
+    model_config = ConfigDict(from_attributes=True)
 
 class LoanScheduleOut(BaseModel):
     id: int
