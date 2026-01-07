@@ -4,28 +4,35 @@
 
 <!-- FORMULAIRE CORRIGÉ: Simplifié pour la nouvelle logique -->
 <div class="card form-card">
-  <form method="post" action="{{ url_for('loans_create_web') }}">
+    <form method="post" action="{{ url_for('loans_create_web') }}">
     <div class="form-row">
       <div class="form-group">
-    	<label>Employé</label>
-    	<select name="employee_id" class="form-select" required>
+          <label>Employé</label>
+          <select name="employee_id" class="form-select" required>
           <option value="" disabled selected>-- Choisir un employé --</option>
-    	  {% for e in employees %}<option value="{{e.id}}">{{e.first_name}} {{e.last_name}}</option>{% endfor %}
-    	</select>
-      </div>
-  	  <div class="form-group"><label>Montant (Crédit)</label><input type="number" step="0.01" name="principal" class="form-control" placeholder="ex: 200" required></div>
-  	  <div class="form-group">
+            {% for e in employees %}<option value="{{e.id}}">{{e.first_name}} {{e.last_name}}</option>{% endfor %}
+           
+        </select>
+          </div>
+        <div class="form-group"><label>Montant (Crédit)</label><input type="number" step="0.01" name="principal"
+          class="form-control" placeholder="ex: 200" required></div>
+        <div class="form-group">
         <label>Date de Début</label>
         <input type="date" id="start_date" name="start_date" class="form-control" value="{{ today_date }}" required>
-    </div>
+      </div>
       <div class="form-group full-width">
-          <label>Motif (Note)</label>
-          <input type="text" name="notes" class="form-control" placeholder="ex: Avance sur salaire, Achat matériel...">
+        <label>Motif (Note)</label>
+        <input type="text" name="notes" class="form-control" placeholder="ex: Avance sur salaire, Achat matériel...">
       </div>
     </div>
-  	<div class="form-actions" style="margin-top: 1rem;"><button class="btn btn-primary">Créer Crédit</button></div>
-  </form>
+      <div class="form-actions" style="margin-top: 1rem;"><button class="btn btn-primary">Créer Crédit</button></div>
+     
+  </form>
 </div>
+
+{% with default_coddep=1 %}
+{% include "sync_partial.html" %}
+{% endwith %}
 
 <!-- TABLEAU CORRIGÉ: Ajout du bouton Supprimer -->
 <div class="card table-card">
@@ -61,14 +68,17 @@
             <div class="form-actions" style="justify-content: flex-start; gap: 0.5rem;">
               <a class="btn btn-secondary" href="{{ url_for('loan_detail_page', loan_id=l.id) }}">Détails</a>
               <!-- NOUVEAU: Bouton Supprimer qui ouvre le modal -->
-              <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteLoanModal-{{ l.id }}">
+              <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                data-bs-target="#deleteLoanModal-{{ l.id }}">
                 Supprimer
               </button>
             </div>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="no-data">Aucun prêt.</td></tr>
+        <tr>
+          <td colspan="6" class="no-data">Aucun prêt.</td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
@@ -77,16 +87,19 @@
 
 <!-- NOUVEAU: Modals de Suppression (un pour chaque prêt) -->
 {% for l in loans %}
-<div class="modal fade" id="deleteLoanModal-{{ l.id }}" tabindex="-1" aria-labelledby="deleteLoanModalLabel-{{ l.id }}" aria-hidden="true">
+<div class="modal fade" id="deleteLoanModal-{{ l.id }}" tabindex="-1" aria-labelledby="deleteLoanModalLabel-{{ l.id }}"
+  aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content card">
       <form action="{{ url_for('loan_delete_web', loan_id=l.id) }}" method="POST">
         <div class="modal-header">
           <h5 class="modal-title" id="deleteLoanModalLabel-{{ l.id }}">Confirmer la Suppression</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="background-color: white;"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+            style="background-color: white;"></button>
         </div>
         <div class="modal-body">
-          <p>Êtes-vous sûr de vouloir supprimer le prêt #{{ l.id }} de <strong>{{ l.employee.first_name }} {{ l.employee.last_name }}</strong> ?</p>
+          <p>Êtes-vous sûr de vouloir supprimer le prêt #{{ l.id }} de <strong>{{ l.employee.first_name }} {{
+              l.employee.last_name }}</strong> ?</p>
           <p class="text-danger"><strong>Cette action est irréversible.</strong></p>
         </div>
         <div class="modal-footer form-actions">
@@ -100,4 +113,3 @@
 {% endfor %}
 
 {% endblock %}
-

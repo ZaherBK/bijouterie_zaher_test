@@ -1,0 +1,132 @@
+<!-- Sync Button and Modal -->
+<div class="card form-card" style="margin-top: 1.5rem;">
+  <h3><i class="fa-solid fa-sync"></i> Synchronisation Compta</h3>
+  <p>Synchroniser les données d'aujourd'hui vers l'ancien logiciel.</p>
+  <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#syncModal">
+    <i class="fa-solid fa-database"></i> Synchroniser vers Compta
+  </button>
+</div>
+
+<!-- Sync Modal -->
+<div class="modal fade" id="syncModal" tabindex="-1" aria-labelledby="syncModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content card">
+      <div class="modal-header">
+        <h5 class="modal-title" id="syncModalLabel">Synchronisation Base de Données</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+          style="background-color: white;"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="fa-solid fa-cloud"></i> <strong>Note importante:</strong><br>
+          Comme votre site est hébergé sur le Cloud, il ne peut pas se connecter directement à votre ordinateur
+          local.<br>
+          Veuillez choisir une méthode ci-dessous :
+        </div>
+
+        <ul class="nav nav-tabs" id="syncTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="sql-tab" data-bs-toggle="tab" data-bs-target="#sql" type="button"
+              role="tab">Fichier SQL (Manuel)</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="auto-tab" data-bs-toggle="tab" data-bs-target="#auto" type="button"
+              role="tab">Automatique (Script)</button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="syncTabsContent" style="padding-top: 1rem;">
+          <!-- SQL Tab -->
+          <div class="tab-pane fade show active" id="sql" role="tabpanel">
+            <p>Téléchargez un fichier SQL contenant les opérations du jour et exécutez-le sur votre base locale.</p>
+            <form id="syncSqlForm">
+              <div class="form-group mb-3">
+                <label for="syncSchemaSql">Nom de la Base (Schema)</label>
+                <input type="text" class="form-control" id="syncSchemaSql" placeholder="ex: mah1303" value="mah1303"
+                  required>
+              </div>
+              <div class="form-group mb-3">
+                <label for="syncCoddepSql">Code (CODDEP)</label>
+                <input type="number" class="form-control" id="syncCoddepSql" value="{{ default_coddep or 2 }}" required>
+              </div>
+              <button type="button" class="btn btn-primary w-100" onclick="downloadSql()">
+                <i class="fa-solid fa-download"></i> Télécharger Fichier SQL
+              </button>
+            </form>
+          </div>
+
+          <!-- Auto Tab -->
+          <div class="tab-pane fade" id="auto" role="tabpanel">
+            <p>Pour une synchronisation automatique, utilisez le script <code>local_sync.py</code> sur votre ordinateur.
+            </p>
+            <ol>
+              <li>Assurez-vous d'avoir Python installé.</li>
+              <li>Téléchargez le script <code>local_sync.py</code> (demandé au développeur).</li>
+              <li>Lancez-le : <code>python local_sync.py</code></li>
+              <li>Entrez vos identifiants Cloud et Local DB.</li>
+            </ol>
+            <div class="alert alert-secondary">
+              Cette méthode connecte votre PC au Cloud pour récupérer les données.
+            </div>
+          </div>
+        </div>
+
+        <div id="syncResult" class="mt-3"></div>
+      </div>
+      <div class="modal-footer form-actions">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function downloadSql() {
+    const schema = document.getElementById('syncSchemaSql').value;
+    const coddep = document.getElementById('syncCoddepSql').value;
+    const resultDiv = document.getElementById('syncResult');
+
+    if (!schema) {
+      resultDiv.innerHTML = '<div class="alert alert-warning">Veuillez entrer le nom de la base.</div>';
+      return;
+    }
+
+    resultDiv.innerHTML = '<div class="alert alert-info">Génération du fichier...</div>';
+
+    try {
+      const response = await fetch('/api/sync/generate-sql', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          schema_name: schema,
+          coddep_expenses: 1, // Default for expenses (ignored here mostly)
+          coddep_deposits: parseInt(coddep)
+        })
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sync_${new Date().toISOString().slice(0, 10)}.sql`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        resultDiv.innerHTML = '<div class="alert alert-success">Fichier téléchargé ! Exécutez-le sur votre base locale.</div>';
+      } else {
+        const data = await response.json();
+        const message = data.message || data.detail || 'Erreur inconnue';
+        resultDiv.innerHTML = `<div class="alert alert-danger">Erreur: ${message}</div>`;
+      }
+
+    } catch (error) {
+      console.error('Error:', error);
+      resultDiv.innerHTML = `<div class="alert alert-danger">Erreur de connexion au serveur.</div>`;
+    }
+  }
+</script>

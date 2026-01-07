@@ -2139,7 +2139,7 @@ async def loan_detail_page(
     schedules_res = await db.execute(
         select(LoanSchedule)
         .where(LoanSchedule.loan_id == loan_id)
-        .order_by(LoanSchedule.due_date.desc(), LoanSchedule.created_at.desc())
+        .order_by(LoanSchedule.due_date.desc())
     )
     schedules = schedules_res.scalars().all()
 
