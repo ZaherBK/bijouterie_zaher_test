@@ -105,6 +105,8 @@ def get_unsynced_data(token):
             # Filter by start_date == today
             loans = [l for l in all_loans if l.get('start_date') == today_str]
             print(f"[{datetime.now():%H:%M:%S}] Found {len(loans)} loans for today")
+        else:
+            print(f"[{datetime.now():%H:%M:%S}] [ERROR] Loans API Error: {resp.status_code} {resp.text}")
     except Exception as e:
         print(f"[{datetime.now():%H:%M:%S}] Error fetching loans: {e}")
     
