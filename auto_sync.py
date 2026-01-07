@@ -32,8 +32,8 @@ LOCAL_DB_SCHEMA = "mah1303"
 SYNC_USER_NAME = "BK ZAHER"  # Name that appears in UTIL column
 
 # CODDEP codes
-CODDEP_EXPENSES = 1  # Dépenses
-CODDEP_DEPOSITS = 2  # Avances
+CODDEP_EXPENSES = 2  # Dépenses
+CODDEP_DEPOSITS = 1  # Avances
 # =========================================================
 
 

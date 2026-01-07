@@ -188,6 +188,7 @@ class DepositOut(DepositBase):
     id: int
     created_by: int
     created_at: datetime
+    employee: EmployeeOut
     model_config = ConfigDict(from_attributes=True)
 
 
