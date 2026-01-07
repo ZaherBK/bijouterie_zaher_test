@@ -151,7 +151,7 @@ class Leave(Base):  # Congé
     end_date: Mapped[date] = mapped_column(Date)
     ltype: Mapped[LeaveType] = mapped_column(Enum(LeaveType))
     approved: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # Relations
     employee = relationship("Employee", back_populates="leaves")
@@ -165,7 +165,7 @@ class Deposit(Base):  # Avance
     amount: Mapped[float] = mapped_column(Numeric(10, 2))
     date: Mapped[date] = mapped_column(Date, index=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # Relations
     employee = relationship("Employee", back_populates="deposits")
@@ -188,7 +188,7 @@ class Pay(Base):
     date: Mapped[date] = mapped_column(Date, index=True)
     pay_type: Mapped[PayType] = mapped_column(Enum(PayType))
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # Relations
     employee = relationship("Employee", back_populates="pay_history")
@@ -255,7 +255,7 @@ class Loan(Base):
     first_due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     fee: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     status: Mapped[LoanStatus] = mapped_column(Enum(LoanStatus), default=LoanStatus.draft)
 
     scheduled_total: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=Decimal("0"))
@@ -316,7 +316,7 @@ class LoanRepayment(Base):
     source: Mapped[RepaymentSource] = mapped_column(Enum(RepaymentSource))
     paid_on: Mapped[date] = mapped_column(Date, index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     loan = relationship("Loan", back_populates="repayments")
@@ -341,6 +341,6 @@ class Expense(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     date: Mapped[date] = mapped_column(Date, index=True)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     creator = relationship("User")

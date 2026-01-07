@@ -140,7 +140,7 @@ class AttendanceOut(BaseModel):
     date: date
     atype: AttendanceType
     note: Optional[str]
-    created_by: int
+    created_by: Optional[int]
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -168,7 +168,7 @@ class LeaveOut(BaseModel):
     end_date: date
     ltype: LeaveType
     approved: bool
-    created_by: int
+    created_by: Optional[int]
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -186,7 +186,7 @@ class DepositCreate(DepositBase):
 
 class DepositOut(DepositBase):
     id: int
-    created_by: int
+    created_by: Optional[int]
     created_at: datetime
     employee: EmployeeOut
     creator: Optional[UserOut] = None
@@ -207,7 +207,7 @@ class PayCreate(PayBase):
 
 class PayOut(PayBase):
     id: int
-    created_by: int
+    created_by: Optional[int]
     created_at: datetime
     employee: EmployeeOut
     creator: Optional[UserOut] = None
@@ -217,7 +217,7 @@ class PayOut(PayBase):
 # --- Schéma Journal d'Audit ---
 class AuditOut(BaseModel):
     id: int
-    actor_id: int
+    actor_id: Optional[int]
     action: str
     entity: str
     entity_id: Optional[int]
@@ -254,7 +254,7 @@ class LoanOut(LoanBase):
     repaid_total: Decimal
     outstanding_principal: Decimal
     next_due_on: date | None
-    created_by: int
+    created_by: Optional[int]
     employee: EmployeeOut | None = None
     creator: Optional[UserOut] = None
     model_config = ConfigDict(from_attributes=True)
@@ -284,7 +284,7 @@ class RepaymentCreate(BaseModel):
 class RepaymentOut(RepaymentCreate):
     id: int
     loan_id: int
-    created_by: int
+    created_by: Optional[int]
     creator: Optional[UserOut] = None
     class Config: from_attributes = True
 
@@ -302,7 +302,7 @@ class ExpenseCreate(ExpenseBase):
 
 class ExpenseOut(ExpenseBase):
     id: int
-    created_by: int
+    created_by: Optional[int]
     created_at: datetime
     creator: Optional[UserOut] = None
 # --- FIN DES NOUVEAUX SCHÉMAS ---
