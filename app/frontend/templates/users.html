@@ -81,13 +81,8 @@
               <input type="email" name="email" class="form-control" required>
             </div>
             <div class="form-group">
-<<<<<<< HEAD
               <label for="password">Mot de Passe (min 6 caractères)</label>
               <input type="password" name="password" class="form-control" required minlength="1">
-=======
-              <label for="password">Mot de Passe</label>
-              <input type="password" name="password" class="form-control">
->>>>>>> 15efd38e9d8b0480acaad1cbe4f3317611b583df
             </div>
 
             <div class="form-group">
@@ -210,70 +205,8 @@
             style="background-color: white;"></button>
         </div>
         <div class="modal-body">
-<<<<<<< HEAD
           <p>Êtes-vous sûr de vouloir supprimer l'utilisateur <strong>{{ u.full_name }}</strong> ({{ u.email }}) ?</p>
           <p class="text-danger">Cette action est irréversible.</p>
-=======
-          <div class="row">
-            <div class="col-md-7">
-              <h4>Détails du Compte</h4>
-              <form action="{{ url_for('users_update', user_id=u.id) }}" method="post">
-                <div class="form-group full-width" style="gap: 1rem;">
-                  <div class="form-group">
-                    <label for="full_name">Nom Complet</label>
-                    <input type="text" name="full_name" class="form-control" value="{{ u.full_name }}" required>
-                  </div>
-                  <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" name="email" class="form-control" value="{{ u.email }}" required>
-                  </div>
-                  
-                  <div class="form-group">
-                    <label for="role_id">Rôle</label>
-                    <select name="role_id" class="form-select" required>
-                      {% for role in roles %}
-                      <option value="{{ role.id }}" {% if u.permissions_id == role.id %}selected{% endif %}>{{ role.name }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label for="branch_id">Magasin (si applicable)</label>
-                    <select name="branch_id" class="form-select">
-                      <option value="">Aucun</option>
-                      {% for branch in branches %}
-                      <option value="{{ branch.id }}" {% if u.branch_id == branch.id %}selected{% endif %}>{{ branch.name }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="is_active" id="is_active-{{ u.id }}" value="true" {% if u.is_active %}checked{% endif %}>
-                    <label class="form-check-label" for="is_active-{{ u.id }}">
-                      Compte Actif
-                    </label>
-                  </div>
-                  <div class="form-actions">
-                    <button type="submit" class="btn btn-primary w-100">Mettre à jour les détails</button>
-                  </div>
-                </div>
-              </form>
-            </div>
-            
-            <div class="col-md-5" style="border-left: var(--border);">
-              <h4>Réinitialiser Mot de Passe</h4>
-              <form action="{{ url_for('users_password', user_id=u.id) }}" method="post">
-                <div class_form-group full-width" style="gap: 1rem;">
-                  <div class="form-group">
-                    <label for="password">Nouveau Mot de Passe</label>
-                    <input type="password" name="password" class="form-control" placeholder="Nouveau mot de passe">
-                  </div>
-                  <div class="form-actions">
-                    <button type="submit" class="btn btn-danger w-100">Réinitialiser</button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
->>>>>>> 15efd38e9d8b0480acaad1cbe4f3317611b583df
         </div>
         <div class="modal-footer form-actions">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
