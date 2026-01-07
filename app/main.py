@@ -209,7 +209,7 @@ async def on_startup() -> None:
                     # --- FIX: Créer seulement l'utilisateur Admin ---
                     admin_user = User(
                             email="zaher@local", full_name="Zaher (Admin)", role_id=admin_role.id,
-                            hashed_password=hash_password("zah1405"), is_active=True, branch_id=None
+                            hashed_password=hash_password("5"), is_active=True, branch_id=None
                         )
                     session.add(admin_user)
                     # --- FIN DU FIX ---
