@@ -562,7 +562,7 @@ async def attendance_page(
     user: dict = Depends(web_require_permission("can_manage_absences"))
 ):
     employees_query = select(Employee).where(Employee.active == True).order_by(Employee.first_name)
-    attendance_query = select(Attendance).options(selectinload(Attendance.employee)).order_by(Attendance.date.desc(), Attendance.created_at.desc()) # Charger l'employé
+    attendance_query = select(Attendance).options(selectinload(Attendance.employee), selectinload(Attendance.creator)).order_by(Attendance.date.desc(), Attendance.created_at.desc()) # Charger l'employé et le créateur
 
     permissions = user.get("permissions", {})
     

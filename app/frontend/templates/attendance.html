@@ -70,6 +70,7 @@
           <th>Date</th>
           <th>Note</th>
           <th>Enregistré le</th>
+          <th>Créé par</th>
           <th>Actions</th> {# <-- NOUVELLE COLONNE #} </tr>
       </thead>
       <tbody>
@@ -87,6 +88,7 @@
           <td>{{ a.date.strftime('%Y-%m-%d') }}</td>
           <td>{{ a.note or '-' }}</td>
           <td class="timestamp">{{ a.created_at | to_tunisia }}</td>
+          <td>{{ a.creator.full_name if a.creator else '-' }}</td>
           {# <-- NOUVEAU BOUTON --> #}
             <td>
               <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"

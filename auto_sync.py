@@ -112,39 +112,7 @@ def get_unsynced_data(token):
     return deposits, expenses, payments, loans
 
 
-def perform_backup(token):
-    """Download full cloud database backup (JSON)."""
-    backup_dir = "sauve"
-    if not os.path.exists(backup_dir):
-        os.makedirs(backup_dir)
 
-    print(f"[{datetime.now():%H:%M:%S}] Starting Cloud Backup download...")
-    headers = {"Authorization": f"Bearer {token}"}
-    
-    try:
-        resp = requests.get(f"{CLOUD_API_URL}/api/sync/backup", headers=headers, stream=True, timeout=120)
-        if resp.status_code == 200:
-            # Extract filename from header or generate one
-            cd = resp.headers.get("content-disposition", "")
-            filename = f"cloud_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            if "filename=" in cd:
-                try:
-                    filename = cd.split("filename=")[1].strip('"')
-                except:
-                    pass
-            
-            filepath = os.path.join(backup_dir, filename)
-            
-            with open(filepath, 'wb') as f:
-                for chunk in resp.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            
-            print(f"[{datetime.now():%H:%M:%S}] [BACKUP] Saved Cloud Backup to: {filepath}")
-        else:
-            print(f"[{datetime.now():%H:%M:%S}] [BACKUP ERROR] API Error {resp.status_code}: {resp.text}")
-            
-    except Exception as e:
-        print(f"[{datetime.now():%H:%M:%S}] [BACKUP ERROR] Connection failed: {e}")
 
 
 def sync_to_local_mysql(token, deposits, expenses, payments, loans):
@@ -244,8 +212,7 @@ def sync_to_local_mysql(token, deposits, expenses, payments, loans):
             
             if inserted > 0:
                 print(f"[{datetime.now():%H:%M:%S}] [OK] Synced {inserted} new records to MySQL")
-                # Perform Cloud Backup
-                perform_backup(token)
+                # Backup is now handled separately by backup_db.py
             else:
                 print(f"[{datetime.now():%H:%M:%S}] [INFO] All records already synced")
             

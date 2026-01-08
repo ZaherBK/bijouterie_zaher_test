@@ -77,6 +77,9 @@
               {% if l.status.value == 'active' %}action-create
               {% elif l.status.value == 'paid' %}action-approve
               {% else %}status-inactive{% endif %}">
+              {% if l.status.value == 'active' %}En Cours
+              {% elif l.status.value == 'paid' %}Payé
+              {% else %}{{ l.status.value }}{% endif %}
             </span>
           </td>
           <td>{{ l.creator.full_name if l.creator else '-' }}</td>
