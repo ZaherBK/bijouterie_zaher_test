@@ -45,13 +45,11 @@
     </div>
     <div class="form-row">
       {# --- PERMISSION : Champ Salaire visible par l'admin seulement --- #}
-      {% if user.permissions.is_admin %}
       <div class="form-group">
         <label for="salary">Salaire de Base (TND)</label>
         <input type="text" id="salary" name="salary" placeholder="Ex: 1200.00" pattern="^\d+([.,]\d{1,2})?$"
           title="Montant positif, ex: 1200 ou 1200.50">
       </div>
-      {% endif %}
       <div class="form-group">
         <label for="branch_id">Magasin</label>
         {% if (not user.permissions.is_admin) and manager_branch_id %}
@@ -99,16 +97,10 @@
           <th>N° CIN</th>
           <th>Poste</th>
           <th>CNSS</th>
-          {# --- PERMISSION : Colonne Salaire visible par l'admin seulement --- #}
-          {% if user.permissions.is_admin %}
           <th>Salaire (TND)</th>
-          {% endif %}
           <th>Magasin</th>
           <th>Statut</th>
-          {# --- PERMISSION : Colonne Actions visible par l'admin seulement --- #}
-          {% if user.permissions.is_admin %}
           <th>Actions</th>
-          {% endif %}
         </tr>
       </thead>
       <tbody>
@@ -126,12 +118,9 @@
             <span class="badge" style="background-color: #757575; color: white;">Non</span>
             {% endif %}
           </td>
-          {# --- PERMISSION : Cellule Salaire visible par l'admin seulement --- #}
-          {% if user.permissions.is_admin %}
           <td class="amount">
             {% if e.salary %}{{ "%.2f"|format(e.salary|float) }}{% else %}-{% endif %}
           </td>
-          {% endif %}
           <td>
             {% for b in branches %}
             {% if b.id == e.branch_id %}
@@ -146,8 +135,6 @@
             <span class="badge status-inactive">Inactif</span>
             {% endif %}
           </td>
-          {# --- PERMISSION : Cellule Actions visible par l'admin seulement --- #}
-          {% if user.permissions.is_admin %}
           <td>
             <a href="{{ request.url_for('employee_report_index') }}?employee_id={{ e.id }}"
               class="btn btn-primary btn-sm">
@@ -160,7 +147,6 @@
               </button>
             </form>
           </td>
-          {% endif %}
         </tr>
         {% endfor %}
       </tbody>

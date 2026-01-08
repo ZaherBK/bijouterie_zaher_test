@@ -527,8 +527,8 @@ async def employees_create(
              print("ERREUR: Admin n'a pas sélectionné de magasin.")
              return RedirectResponse(request.url_for('employees_page'), status_code=status.HTTP_302_FOUND)
 
-    if not permissions.get("is_admin"):
-        salary = None
+    # Was: if not permissions.get("is_admin"): salary = None -> REMOVED to allow salary setting
+
 
     if cin:
         res_cin = await db.execute(select(Employee).where(Employee.cin == cin))
