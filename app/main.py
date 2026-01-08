@@ -438,17 +438,24 @@ async def employees_create(
     first_name: Annotated[str, Form()],
     last_name: Annotated[str, Form()],
     position: Annotated[str, Form()],
-    branch_id: Annotated[int, Form()],
-    db: AsyncSession = Depends(get_db),
     user: dict = Depends(web_require_permission("can_manage_employees")),
+    branch_id: Annotated[int | None, Form()] = None, # Make optional, fill later if missing
     cin: Annotated[str, Form()] = None,
     salary: Annotated[Decimal, Form()] = None,
-    has_cnss: bool = Form(False) # Checkbox (if unchecked, sends False/None)
+    has_cnss: bool = Form(False)
 ):
     permissions = user.get("permissions", {})
-
-    if not permissions.get("is_admin") and user.get("branch_id") != branch_id:
-        return RedirectResponse(request.url_for('employees_page'), status_code=status.HTTP_302_FOUND)
+    
+    # Logic: If manager, Force branch_id. If Admin, Require branch_id.
+    if not permissions.get("is_admin"):
+        # Manager/Gerant: Force their branch DB
+        branch_id = user.get("branch_id")
+    else:
+        # Admin: Must select a branch
+        if not branch_id:
+             # Should show error, but for now redirect
+             print("ERREUR: Admin n'a pas sélectionné de magasin.")
+             return RedirectResponse(request.url_for('employees_page'), status_code=status.HTTP_302_FOUND)
 
     if not permissions.get("is_admin"):
         salary = None
@@ -712,8 +719,15 @@ async def expenses_page(
     user: dict = Depends(web_require_permission("can_manage_expenses"))
 ):
     # Fetch expenses
-    expenses_query = select(models.Expense).options(selectinload(models.Expense.creator)).order_by(models.Expense.date.desc(), models.Expense.created_at.desc()).limit(100)
-    res_expenses = await db.execute(expenses_query)
+    expenses_query = select(models.Expense).options(selectinload(models.Expense.creator)).order_by(models.Expense.date.desc(), models.Expense.created_at.desc())
+
+    permissions = user.get("permissions", {})
+    if not permissions.get("is_admin"):
+        branch_id = user.get("branch_id")
+        # Filter expenses created by users in the same branch
+        expenses_query = expenses_query.join(models.User, models.Expense.created_by == models.User.id).where(models.User.branch_id == branch_id)
+
+    res_expenses = await db.execute(expenses_query.limit(100))
     
     context = {
         "request": request, "user": user, "app_name": APP_NAME,
