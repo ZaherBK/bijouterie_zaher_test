@@ -84,16 +84,36 @@ def health_check():
 
 @app.get("/fix-migration")
 async def fix_migration_manual(db: AsyncSession = Depends(get_db)):
-    """Manual trigger to fix database missing column."""
+    """Manual trigger to fix database missing column and backfill data."""
+    messages = []
     try:
-        # Try adding the column
-        # Postgres supports IF NOT EXISTS for ADD COLUMN in newer versions.
-        # If not, we catch the error.
-        await db.execute(text("ALTER TABLE expenses ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
-        await db.commit()
-        return {"status": "success", "message": "Migration attempted: added branch_id to expenses."}
+        # 1. Add Column
+        try:
+            await db.execute(text("ALTER TABLE expenses ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
+            await db.commit()
+            messages.append("Column 'branch_id' checked/added.")
+        except Exception as e:
+            messages.append(f"Column check skipped/failed: {e}")
+
+        # 2. Backfill Data (Fix NULLs)
+        # Update expenses set branch_id from the creator's branch
+        # PostgreSQL syntax
+        try:
+            await db.execute(text("""
+                UPDATE expenses 
+                SET branch_id = users.branch_id 
+                FROM users 
+                WHERE expenses.created_by = users.id 
+                AND expenses.branch_id IS NULL
+            """))
+            await db.commit()
+            messages.append("Data Backfill successful: Assigned branches to existing expenses.")
+        except Exception as e:
+            messages.append(f"Data Backfill failed: {e}")
+
+        return {"status": "success", "messages": messages}
     except Exception as e:
-        return {"status": "error", "message": f"Migration failed: {str(e)}"}
+        return {"status": "error", "message": f"Global error: {str(e)}"}
 
 # --- 1. API Routers ---
 app.include_router(users.router)
@@ -666,22 +686,41 @@ async def deposits_page(
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(web_require_permission("can_manage_deposits"))
 ):
-    employees_query = select(Employee).where(Employee.active == True).order_by(Employee.first_name)
-    deposits_query = select(Deposit).options(selectinload(Deposit.employee), selectinload(Deposit.creator)).order_by(Deposit.date.desc(), Deposit.created_at.desc()) # Charger l'employé et le créateur
+    # Query for employees (for the select dropdown)
+    q_emp = select(Employee).where(Employee.active == True).order_by(Employee.first_name)
+    
+    # Query for Deposits
+    q_dep = select(Deposit).options(selectinload(Deposit.employee), selectinload(Deposit.creator)).order_by(Deposit.date.desc(), Deposit.created_at.desc())
 
     permissions = user.get("permissions", {})
-    if not permissions.get("is_admin"):
-        branch_id = user.get("branch_id")
-        employees_query = employees_query.where(Employee.branch_id == branch_id)
-        deposits_query = deposits_query.join(Employee).where(Employee.branch_id == branch_id)
+    
+    # Load Branches for Admin Selector
+    res_branches = await db.execute(select(Branch))
+    all_branches = res_branches.scalars().all()
 
-    res_employees = await db.execute(employees_query)
-    res_deposits = await db.execute(deposits_query.limit(100))
+    if not permissions.get("is_admin"):
+        # Manager Filter
+        branch_id = user.get("branch_id")
+        q_emp = q_emp.where(Employee.branch_id == branch_id)
+        # Deposits filtered by Employee's branch
+        q_dep = q_dep.join(Employee).where(Employee.branch_id == branch_id)
+    else:
+        # Admin Filter
+        branch_filter_id = request.query_params.get("branch_id")
+        if branch_filter_id and branch_filter_id.isdigit():
+             bid = int(branch_filter_id)
+             q_emp = q_emp.where(Employee.branch_id == bid)
+             q_dep = q_dep.join(Employee).where(Employee.branch_id == bid)
+
+    res_emp = await db.execute(q_emp)
+    res_dep = await db.execute(q_dep.limit(100))
 
     context = {
         "request": request, "user": user, "app_name": APP_NAME,
-        "employees": res_employees.scalars().all(),
-        "deposits": res_deposits.scalars().all(),
+        "employees": res_emp.scalars().all(),
+        "deposits": res_dep.scalars().all(),
+        "branches": all_branches, # Passed for Admin Selector
+        "selected_branch_id": request.query_params.get("branch_id"), 
         "today_date": get_tunisia_today().isoformat()
     }
     return templates.TemplateResponse("deposits.html", context)
@@ -1593,24 +1632,40 @@ async def loans_page(
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(web_require_permission("can_manage_loans"))
 ):
-    employees_query = select(Employee).where(Employee.active == True).order_by(Employee.first_name)
-    # Ensure loans load employee and creator for template
-    loans_query = select(Loan).options(selectinload(Loan.employee), selectinload(Loan.creator)).order_by(Loan.created_at.desc())
+    # Query for Employees
+    q_emp = select(Employee).where(Employee.active == True).order_by(Employee.first_name)
+    
+    # Query for Loans
+    q_loans = select(Loan).options(selectinload(Loan.employee), selectinload(Loan.creator)).order_by(Loan.created_at.desc())
 
     permissions = user.get("permissions", {})
+    
+    # Load Branches for Admin Selector
+    res_branches = await db.execute(select(Branch))
+    all_branches = res_branches.scalars().all()
+
     if not permissions.get("is_admin"):
         branch_id = user.get("branch_id")
-        employees_query = employees_query.where(Employee.branch_id == branch_id)
-        # Filter loans by filtering employees in the branch
-        loans_query = loans_query.join(Employee).where(Employee.branch_id == branch_id)
+        q_emp = q_emp.where(Employee.branch_id == branch_id)
+        q_loans = q_loans.join(Employee).where(Employee.branch_id == branch_id)
+    else:
+        # Admin Filter
+        branch_filter_id = request.query_params.get("branch_id")
+        if branch_filter_id and branch_filter_id.isdigit():
+             bid = int(branch_filter_id)
+             q_emp = q_emp.where(Employee.branch_id == bid)
+             q_loans = q_loans.join(Employee).where(Employee.branch_id == bid)
 
-    res_employees = await db.execute(employees_query)
-    res_loans = await db.execute(loans_query)
+    res_emp = await db.execute(q_emp)
+    res_loans = await db.execute(q_loans)
 
     context = {
         "request": request, "user": user, "app_name": APP_NAME,
-        "employees": res_employees.scalars().all(),
-        "loans": res_loans.scalars().all()
+        "employees": res_emp.scalars().all(),
+        "loans": res_loans.scalars().all(),
+        "branches": all_branches, # Passed for Admin Selector
+        "selected_branch_id": request.query_params.get("branch_id"), 
+        "today_date": get_tunisia_today().isoformat()
     }
     return templates.TemplateResponse("loans.html", context)
 
