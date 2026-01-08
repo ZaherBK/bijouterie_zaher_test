@@ -7,7 +7,7 @@
 
 
 {% if user.permissions.is_admin %}
-<div class="card form-card mb-4" style="background: #e3f2fd; border-left: 5px solid #2196f3;">
+<div class="card form-card mb-4" style="border-left: 5px solid #2196f3;">
   <h3><i class="fa-solid fa-filter"></i> Filtrer par Magasin (Admin)</h3>
   <form method="get" action="{{ url_for('pay_employee_page') }}">
     <select name="branch_id" class="form-control" onchange="this.form.submit()">

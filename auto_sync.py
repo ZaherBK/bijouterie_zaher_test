@@ -22,9 +22,9 @@ import time
 import os
 
 # ===================== CONFIGURATION =====================
-CLOUD_API_URL = "https://bijouteriezaher-gestion.onrender.com/"  # Your hosted website URL
-CLOUD_EMAIL = "zied@local.com"
-CLOUD_PASSWORD = "0"
+CLOUD_API_URL = "https://hr-sync.onrender.com/"  # Your hosted website URL
+CLOUD_EMAIL = "issam@local.com"
+CLOUD_PASSWORD = "002"
 
 LOCAL_DB_HOST = "localhost"
 LOCAL_DB_USER = "root"
