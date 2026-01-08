@@ -1,7 +1,15 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2 class="page-title"><i class="fa-solid fa-receipt"></i> Gestion des Dépenses</h2>
+<h2 class="page-title">
+    <i class="fa-solid fa-receipt"></i> Gestion des Dépenses
+    {% if user.permissions.is_admin %}
+    <a href="/fix-migration" class="btn btn-warning btn-sm" style="float:right; font-size: 0.7rem;"
+        title="Cliquez ici si 'Erreur 500' s'affiche" target="_blank">
+        <i class="fa-solid fa-screwdriver-wrench"></i> Fix DB
+    </a>
+    {% endif %}
+</h2>
 
 {% if user.permissions.is_admin %}
 <div class="card form-card mb-4" style="background: #e3f2fd; border-left: 5px solid #2196f3;">

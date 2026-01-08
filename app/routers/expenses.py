@@ -97,7 +97,31 @@ async def list_expenses(
         if branch_id:
              query = query.where(Expense.branch_id == branch_id)
         
-    res = await db.execute(query.limit(100))
+    # --- SELF-HEALING: Auto-Migrate if column missing ---
+    from sqlalchemy.exc import ProgrammingError
+    from sqlalchemy import text
+    import logging
+
+    try:
+        res = await db.execute(query.limit(100))
+    except ProgrammingError as e:
+        # Check if error is 'UndefinedColumnError' regarding 'branch_id'
+        if "branch_id" in str(e) and ("does not exist" in str(e) or "UndefinedColumnError" in str(e)):
+            logging.error("Self-Healing: Detected missing 'expenses.branch_id' column. Attempting auto-migration.")
+            try:
+                # Force migration
+                await db.execute(text("ALTER TABLE expenses ADD COLUMN branch_id INTEGER REFERENCES branches(id)"))
+                await db.commit()
+                logging.info("Self-Healing: Migration successful. Retrying query.")
+                
+                # Retry the query
+                res = await db.execute(query.limit(100))
+            except Exception as migration_error:
+                logging.critical(f"Self-Healing Failed: {migration_error}")
+                raise e # Raise original error if repair fails
+        else:
+            raise e
+        
     return res.scalars().all()
 
 @router.post("/{expense_id}/delete", dependencies=[Depends(api_require_permission("can_manage_expenses"))])
