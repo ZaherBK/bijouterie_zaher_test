@@ -45,10 +45,19 @@ async def create_expense(
     return expense
 
 @router.get("/", response_model=List[ExpenseOut])
-async def list_expenses(db: AsyncSession = Depends(get_db)):
+async def list_expenses(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(api_current_user)
+):
     """List all expenses."""
-    # Add filtering logic here if needed (e.g., by date range)
-    res = await db.execute(select(Expense).options(selectinload(Expense.creator)).order_by(Expense.date.desc(), Expense.created_at.desc()).limit(100))
+    query = select(Expense).options(selectinload(Expense.creator)).order_by(Expense.date.desc(), Expense.created_at.desc())
+    
+    # Permission Check
+    if not user.permissions.is_admin:
+        # Filter by user's branch
+        query = query.join(User, Expense.created_by == User.id).where(User.branch_id == user.branch_id)
+        
+    res = await db.execute(query.limit(100))
     return res.scalars().all()
 
 @router.post("/{expense_id}/delete", dependencies=[Depends(api_require_permission("can_manage_expenses"))])

@@ -101,8 +101,23 @@ app.add_middleware(
     max_age=int(ACCESS_TOKEN_EXPIRE_MINUTES) * 60
 )
 
-# --- ADD THIS CODE ---
-# This function will be our new template filter
+@app.get("/branches", response_class=HTMLResponse, name="branches_page")
+async def branches_page(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(web_require_permission("can_manage_branches"))
+):
+    """Page de gestion des magasins (Admin)."""
+    res = await db.execute(select(models.Branch).order_by(models.Branch.name))
+    
+    context = {
+        "request": request, "user": user, "app_name": APP_NAME,
+        "branches": res.scalars().all(),
+    }
+    return templates.TemplateResponse("branches.html", context)
+
+
+# --- 2. Static/Templates Setup ---
 
 def format_datetime_tunisia(dt: datetime | None):
     """Converts a UTC datetime object to 'Africa/Tunis' string format."""
@@ -1470,6 +1485,34 @@ async def primes_attribuer(
 
 # --- Gestion des Rôles ---
 # ... (Roles routes remain the same - not shown for brevity) ...
+@app.get("/loans", response_class=HTMLResponse, name="loans_page")
+async def loans_page(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(web_require_permission("can_manage_loans"))
+):
+    employees_query = select(Employee).where(Employee.active == True).order_by(Employee.first_name)
+    # Ensure loans load employee and creator for template
+    loans_query = select(Loan).options(selectinload(Loan.employee), selectinload(Loan.creator)).order_by(Loan.created_at.desc())
+
+    permissions = user.get("permissions", {})
+    if not permissions.get("is_admin"):
+        branch_id = user.get("branch_id")
+        employees_query = employees_query.where(Employee.branch_id == branch_id)
+        # Filter loans by filtering employees in the branch
+        loans_query = loans_query.join(Employee).where(Employee.branch_id == branch_id)
+
+    res_employees = await db.execute(employees_query)
+    res_loans = await db.execute(loans_query)
+
+    context = {
+        "request": request, "user": user, "app_name": APP_NAME,
+        "employees": res_employees.scalars().all(),
+        "loans": res_loans.scalars().all()
+    }
+    return templates.TemplateResponse("loans.html", context)
+
+
 @app.get("/roles", response_class=HTMLResponse, name="roles_page")
 async def roles_page(
     request: Request,

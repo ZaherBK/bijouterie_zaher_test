@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="page-title"><i class="fa-solid fa-shop"></i> Gestion des Magasins</h2>
+
+<!-- Carte Ajout Rapide -->
+<div class="card form-card">
+    <h3><i class="fa-solid fa-plus-circle"></i> Ajouter un Magasin</h3>
+    <form id="addBranchForm" method="post" action="/api/branches/">
+        <!-- Note: This will be handled by JS fetch usually, simplified here -->
+        <div class="form-row">
+            <div class="form-group">
+                <label for="name">Nom du Magasin</label>
+                <input type="text" id="name" name="name" class="form-control" required placeholder="Ex: Magasin Sousse">
+            </div>
+            <div class="form-group">
+                <label for="city">Ville</label>
+                <input type="text" id="city" name="city" class="form-control" required placeholder="Ex: Sousse">
+            </div>
+        </div>
+        <div class="form-actions">
+            <!-- Using standard form submit for simplicity, handled by JS below -->
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Créer Magasin</button>
+        </div>
+    </form>
+</div>
+
+<!-- Liste des Magasins -->
+<div class="card table-card">
+    <h3><i class="fa-solid fa-list"></i> Liste des Magasins</h3>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nom</th>
+                    <th>Ville</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for branch in branches %}
+                <tr id="row-{{ branch.id }}">
+                    <td>#{{ branch.id }}</td>
+                    <td class="branch-name">{{ branch.name }}</td>
+                    <td class="branch-city">{{ branch.city }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary edit-btn" data-id="{{ branch.id }}"
+                            data-name="{{ branch.name }}" data-city="{{ branch.city }}">
+                            <i class="fa-solid fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger delete-btn" data-id="{{ branch.id }}">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center no-data">Aucun magasin trouvé.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content card">
+            <div class="modal-header">
+                <h5 class="modal-title">Modifier Magasin</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                    style="background-color:white"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editBranchForm">
+                    <input type="hidden" id="edit_id">
+                    <div class="form-group">
+                        <label for="edit_name">Nom</label>
+                        <input type="text" id="edit_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_city">Ville</label>
+                        <input type="text" id="edit_city" class="form-control" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer form-actions">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-success" id="saveEditBtn">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // 1. ADD Branch
+        const addForm = document.getElementById('addBranchForm');
+        addForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const formData = {
+                name: document.getElementById('name').value,
+                city: document.getElementById('city').value
+            };
+
+            try {
+                const resp = await fetch('/api/branches/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                if (resp.ok) {
+                    window.location.reload();
+                } else {
+                    const err = await resp.json();
+                    alert("Erreur: " + err.detail);
+                }
+            } catch (e) { console.error(e); alert("Erreur réseau"); }
+        });
+
+        // 2. DELETE Branch
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                if (!confirm("Supprimer ce magasin ?")) return;
+                const id = this.dataset.id;
+                try {
+                    const resp = await fetch(`/api/branches/${id}`, { method: 'DELETE' });
+                    if (resp.ok) {
+                        document.getElementById(`row-${id}`).remove();
+                    } else {
+                        alert("Erreur lors de la suppression.");
+                    }
+                } catch (e) { console.error(e); }
+            });
+        });
+
+        // 3. EDIT Branch
+        const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                document.getElementById('edit_id').value = this.dataset.id;
+                document.getElementById('edit_name').value = this.dataset.name;
+                document.getElementById('edit_city').value = this.dataset.city;
+                editModal.show();
+            });
+        });
+
+        document.getElementById('saveEditBtn').addEventListener('click', async function () {
+            const id = document.getElementById('edit_id').value;
+            const data = {
+                name: document.getElementById('edit_name').value,
+                city: document.getElementById('edit_city').value
+            };
+
+            try {
+                const resp = await fetch(`/api/branches/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (resp.ok) {
+                    window.location.reload();
+                } else {
+                    const err = await resp.json();
+                    alert("Erreur: " + err.detail);
+                }
+            } catch (e) { console.error(e); }
+        });
+    });
+</script>
+{% endblock %}

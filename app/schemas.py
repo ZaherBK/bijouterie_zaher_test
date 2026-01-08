@@ -85,8 +85,12 @@ class UserOut(UserBase):
 class BranchBase(BaseModel):
     name: str
     city: str
+    model_config = ConfigDict(from_attributes=True)
 
 class BranchCreate(BranchBase):
+    pass
+
+class BranchUpdate(BranchBase):
     pass
 
 class BranchOut(BranchBase):
