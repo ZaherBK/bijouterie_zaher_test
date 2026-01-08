@@ -2334,22 +2334,17 @@ html[data-theme='light'] .leaderboard-card.rank-3 {
 }
 
 
-/* FIX: Form Switch Checkbox State */
-.form-check-input:checked {
+/* FIX: Form Switch Checkbox State - ROBUST */
+.form-check-input:checked,
+.form-check-input:checked:focus,
+.form-check-input:checked:active {
   background-color: var(--accent-1) !important;
   border-color: var(--accent-1) !important;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e") !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23ffffff'/%3e%3c/svg%3e") !important;
 }
 
-/* Ensure focus doesn't break the checked state */
+/* Unchecked Focus State (Optional: keeps the ring but default knob) */
 .form-check-input:focus {
   border-color: var(--accent-1);
   box-shadow: 0 0 0 0.25rem rgba(124, 92, 255, 0.25);
-  /* DO NOT override background-image here indiscriminately */
-}
-
-/* Specific override for Checked + Followed to ensure knob stays white */
-.form-check-input:checked:focus {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e") !important;
-  background-color: var(--accent-1) !important;
 }
