@@ -453,6 +453,7 @@ async def employees_create(
     first_name: Annotated[str, Form()],
     last_name: Annotated[str, Form()],
     position: Annotated[str, Form()],
+    db: AsyncSession = Depends(get_db), # Restored missing db dependency
     user: dict = Depends(web_require_permission("can_manage_employees")),
     branch_id: Annotated[int | None, Form()] = None, # Make optional, fill later if missing
     cin: Annotated[str, Form()] = None,
