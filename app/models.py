@@ -342,5 +342,9 @@ class Expense(Base):
     date: Mapped[date] = mapped_column(Date, index=True)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    # --- ADDED: Branch Link ---
+    branch_id: Mapped[int | None] = mapped_column(ForeignKey("branches.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    
     creator = relationship("User")
+    branch = relationship("Branch")

@@ -23,8 +23,8 @@ import os
 
 # ===================== CONFIGURATION =====================
 CLOUD_API_URL = "https://bijouteriezaher-gestion.onrender.com/"  # Your hosted website URL
-CLOUD_EMAIL = "zaher@local.com"
-CLOUD_PASSWORD = "5"
+CLOUD_EMAIL = "zied@local.com"
+CLOUD_PASSWORD = "0"
 
 LOCAL_DB_HOST = "localhost"
 LOCAL_DB_USER = "root"

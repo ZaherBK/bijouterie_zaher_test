@@ -5,105 +5,125 @@
 <h2 class="page-title"><i class="fa-regular fa-calendar-xmark"></i> Gestion des Absences</h2>
 
 <div class="card form-card">
-    {# --- MODIFIÉ : Titre formulaire --- #}
-    <h3><i class="fa-solid fa-user-clock"></i> Enregistrer une Absence</h3>
-    <form method="post" action="{{ request.url_for('attendance_create') }}">
-      <div class="form-row">
-        <div class="form-group">
-          <label for="employee_id">Employé</label>
-          {# --- FIX: Apply form-select class --- #}
-          <select id="employee_id" name="employee_id" class="form-select" required>
-             <option value="" disabled selected>-- Choisir un employé --</option>
-            {% for e in employees %}
-            <option value="{{ e.id }}">{{ e.first_name }} {{ e.last_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="date">Date de l'Absence</label>
-          {# --- FIX: Apply form-control class --- #}
-          <input type="date" id="date" name="date" class="form-control" required value="{{ today_date }}">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group full-width"> {# Prend toute la largeur #}
-          <label for="note">Note / Raison (Optionnel)</label>
-          {# --- FIX: Apply form-control class --- #}
-          <input type="text" id="note" name="note" class="form-control" placeholder="Ex: Maladie, Non justifié...">
-        </div>
-      </div>
-      <div class="form-actions" style="margin-top: 1rem;"> {# Added margin-top #}
-        <button type="submit" class="btn btn-danger"> {# Bouton rouge pour absence #}
-            <i class="fa-solid fa-save"></i> Enregistrer Absence
-        </button>
-      </div>
+
+  {# --- ADMIN FILTER --- #}
+  {% if user.permissions.is_admin %}
+  <div class="card form-card mb-4" style="background: #e3f2fd; border-left: 5px solid #2196f3;">
+    <h3><i class="fa-solid fa-filter"></i> Filtrer par Magasin (Admin)</h3>
+    <form method="get" action="{{ url_for('attendance_page') }}">
+      <select name="branch_id" class="form-control" onchange="this.form.submit()">
+        <option value="">-- Tous les Magasins --</option>
+        {% for b in branches %}
+        <option value="{{ b.id }}" {% if selected_branch_id and selected_branch_id|int==b.id %}selected{% endif %}>
+          {{ b.name }} ({{ b.city }})
+        </option>
+        {% endfor %}
+      </select>
     </form>
+  </div>
+  {% endif %}
+  {# --- MODIFIÉ : Titre formulaire --- #}
+  <h3><i class="fa-solid fa-user-clock"></i> Enregistrer une Absence</h3>
+  <form method="post" action="{{ request.url_for('attendance_create') }}">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="employee_id">Employé</label>
+        {# --- FIX: Apply form-select class --- #}
+        <select id="employee_id" name="employee_id" class="form-select" required>
+          <option value="" disabled selected>-- Choisir un employé --</option>
+          {% for e in employees %}
+          <option value="{{ e.id }}">{{ e.first_name }} {{ e.last_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="date">Date de l'Absence</label>
+        {# --- FIX: Apply form-control class --- #}
+        <input type="date" id="date" name="date" class="form-control" required value="{{ today_date }}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group full-width"> {# Prend toute la largeur #}
+        <label for="note">Note / Raison (Optionnel)</label>
+        {# --- FIX: Apply form-control class --- #}
+        <input type="text" id="note" name="note" class="form-control" placeholder="Ex: Maladie, Non justifié...">
+      </div>
+    </div>
+    <div class="form-actions" style="margin-top: 1rem;"> {# Added margin-top #}
+      <button type="submit" class="btn btn-danger"> {# Bouton rouge pour absence #}
+        <i class="fa-solid fa-save"></i> Enregistrer Absence
+      </button>
+    </div>
+  </form>
 </div>
 
 <div class="card table-card" style="margin-top: 1.5rem;"> {# Added margin-top #}
-    {# --- MODIFIÉ : Titre --- #}
-    <h3><i class="fa-solid fa-list-ul"></i> Absences Récentes</h3>
-    {% if attendance %}
-    <div class="table-responsive">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Employé</th>
-              <th>Date</th>
-              <th>Note</th>
-              <th>Enregistré le</th>
-              <th>Actions</th> {# <-- NOUVELLE COLONNE #}
-            </tr>
-           </thead>
-           <tbody>
-            {% for a in attendance %}
-            <tr>
-              <td>{{ a.id }}</td>
-              <td>
-                {# --- Utiliser la relation chargée --- #}
-                {% if a.employee %}
-                    {{ a.employee.first_name }} {{ a.employee.last_name }}
-                {% else %}
-                    Employé ID: {{ a.employee_id }} (Non trouvé)
-                {% endif %}
-              </td>
-              <td>{{ a.date.strftime('%Y-%m-%d') }}</td>
-              <td>{{ a.note or '-' }}</td>
-              <td class="timestamp">{{ a.created_at | to_tunisia }}</td>
-              {# <-- NOUVEAU BOUTON --> #}
-              <td>
-                 <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteAttendanceModal-{{ a.id }}">
-                   Supprimer
-                 </button>
-              </td>
-              {# <-- FIN NOUVEAU BOUTON --> #}
-            </tr>
-            {% endfor %}
-           </tbody>
-        </table>
-    </div>
-    {# --- MODALS MOVED FROM HERE --- #}
-    {% else %}
-        <p class="no-data" style="padding-top: 1rem;">Aucun enregistrement d'absence à afficher.</p> {# Added padding #}
-    {% endif %}
+  {# --- MODIFIÉ : Titre --- #}
+  <h3><i class="fa-solid fa-list-ul"></i> Absences Récentes</h3>
+  {% if attendance %}
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Employé</th>
+          <th>Date</th>
+          <th>Note</th>
+          <th>Enregistré le</th>
+          <th>Actions</th> {# <-- NOUVELLE COLONNE #} </tr>
+      </thead>
+      <tbody>
+        {% for a in attendance %}
+        <tr>
+          <td>{{ a.id }}</td>
+          <td>
+            {# --- Utiliser la relation chargée --- #}
+            {% if a.employee %}
+            {{ a.employee.first_name }} {{ a.employee.last_name }}
+            {% else %}
+            Employé ID: {{ a.employee_id }} (Non trouvé)
+            {% endif %}
+          </td>
+          <td>{{ a.date.strftime('%Y-%m-%d') }}</td>
+          <td>{{ a.note or '-' }}</td>
+          <td class="timestamp">{{ a.created_at | to_tunisia }}</td>
+          {# <-- NOUVEAU BOUTON --> #}
+            <td>
+              <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"
+                data-bs-target="#deleteAttendanceModal-{{ a.id }}">
+                Supprimer
+              </button>
+            </td>
+            {# <-- FIN NOUVEAU BOUTON --> #}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {# --- MODALS MOVED FROM HERE --- #}
+  {% else %}
+  <p class="no-data" style="padding-top: 1rem;">Aucun enregistrement d'absence à afficher.</p> {# Added padding #}
+  {% endif %}
 </div> {# <-- End of card table-card div --> #}
 
-{# --- MODALS (Generate only if user is admin, as only admin can trigger them) --- #}
-{% if user.permissions.is_admin and attendance %} {# Check again if attendance exists before looping #}
+  {# --- MODALS (Generate only if user is admin, as only admin can trigger them) --- #}
+  {% if user.permissions.is_admin and attendance %} {# Check again if attendance exists before looping #}
   {% for a in attendance %}
-  <div class="modal fade" id="deleteAttendanceModal-{{ a.id }}" tabindex="-1" aria-labelledby="deleteAttendanceModalLabel-{{ a.id }}" aria-hidden="true">
+  <div class="modal fade" id="deleteAttendanceModal-{{ a.id }}" tabindex="-1"
+    aria-labelledby="deleteAttendanceModalLabel-{{ a.id }}" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content card"> {# Apply card style to modal #}
         <form action="{{ url_for('attendance_delete', attendance_id=a.id) }}" method="POST">
           <div class="modal-header">
             <h5 class="modal-title" id="deleteAttendanceModalLabel-{{ a.id }}">Confirmer la Suppression</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="background-color: white;"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+              style="background-color: white;"></button>
           </div>
           <div class="modal-body">
             <p>Êtes-vous sûr de vouloir supprimer l'absence du
-               <strong>{{ a.date.strftime('%Y-%m-%d') }}</strong> pour
-               <strong>{{ a.employee.first_name ~ ' ' ~ a.employee.last_name if a.employee else 'Employé ID:' ~ a.employee_id }}</strong> ?
+              <strong>{{ a.date.strftime('%Y-%m-%d') }}</strong> pour
+              <strong>{{ a.employee.first_name ~ ' ' ~ a.employee.last_name if a.employee else 'Employé ID:' ~
+                a.employee_id }}</strong> ?
             </p>
             <p class="text-danger">Cette action est irréversible.</p>
           </div>
@@ -116,7 +136,7 @@
     </div>
   </div>
   {% endfor %}
-{% endif %}
-{# --- END OF MODALS --- #}
+  {% endif %}
+  {# --- END OF MODALS --- #}
 
-{% endblock %}
+  {% endblock %}

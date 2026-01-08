@@ -6,6 +6,23 @@
 <h2 class="page-title"><i class="fa-solid fa-umbrella-beach"></i> Gestion des Congés</h2>
 
 {# Formulaire de demande de congé #}
+{# Formulaire de demande de congé #}
+{% if user.permissions.is_admin %}
+<div class="card form-card mb-4" style="background: #e3f2fd; border-left: 5px solid #2196f3;">
+  <h3><i class="fa-solid fa-filter"></i> Filtrer par Magasin (Admin)</h3>
+  <form method="get" action="{{ url_for('leaves_page') }}">
+    <select name="branch_id" class="form-control" onchange="this.form.submit()">
+      <option value="">-- Tous les Magasins --</option>
+      {% for b in branches %}
+      <option value="{{ b.id }}" {% if selected_branch_id and selected_branch_id|int==b.id %}selected{% endif %}>
+        {{ b.name }} ({{ b.city }})
+      </option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+{% endif %}
+
 <div class="card form-card">
   <h3><i class="fa-solid fa-plus"></i> Demander un Congé</h3>
   <form method="post" action="{{ request.url_for('leaves_create') }}">

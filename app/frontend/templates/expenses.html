@@ -3,6 +3,22 @@
 {% block content %}
 <h2 class="page-title"><i class="fa-solid fa-receipt"></i> Gestion des Dépenses</h2>
 
+{% if user.permissions.is_admin %}
+<div class="card form-card mb-4" style="background: #e3f2fd; border-left: 5px solid #2196f3;">
+    <h3><i class="fa-solid fa-filter"></i> Filtrer par Magasin (Admin)</h3>
+    <form method="get" action="{{ url_for('expenses_page') }}">
+        <select name="branch_id" class="form-control" onchange="this.form.submit()">
+            <option value="">-- Tous les Magasins --</option>
+            {% for b in branches %}
+            <option value="{{ b.id }}" {% if selected_branch_id and selected_branch_id|int==b.id %}selected{% endif %}>
+                {{ b.name }} ({{ b.city }})
+            </option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+{% endif %}
+
 <div class="card form-card">
     <h3><i class="fa-solid fa-plus"></i> Ajouter une Dépense</h3>
     <form method="post" action="{{ request.url_for('expenses_create') }}">
@@ -18,18 +34,32 @@
                     pattern="^\d+([.,]\d{1,2})?$" title="Montant positif, ex: 150 ou 150.50 ou 150,50">
             </div>
         </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="date">Date</label>
-                <input type="date" id="date" name="date" class="form-control" required value="{{ today_date }}">
-            </div>
-        </div>
-        <div class="form-actions" style="margin-top: 1rem;">
-            <button type="submit" class="btn btn-success">
-                <i class="fa-solid fa-save"></i> Enregistrer Dépense
-            </button>
-        </div>
-    </form>
+</div>
+<div class="form-row">
+    <div class="form-group">
+        <label for="date">Date</label>
+        <input type="date" id="date" name="date" class="form-control" required value="{{ today_date }}">
+    </div>
+    {% if user.permissions.is_admin %}
+    <div class="form-group">
+        <label for="branch_id">Magasin (Admin)</label>
+        <select name="branch_id" id="branch_id" class="form-control">
+            <option value="">-- Attribuer à... --</option>
+            {% for b in branches %}
+            <option value="{{ b.id }}" {% if selected_branch_id and selected_branch_id|int==b.id %}selected{% endif %}>
+                {{ b.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+</div>
+<div class="form-actions" style="margin-top: 1rem;">
+    <button type="submit" class="btn btn-success">
+        <i class="fa-solid fa-save"></i> Enregistrer Dépense
+    </button>
+</div>
+</form>
 </div>
 
 <!-- Sync Button and Modal -->

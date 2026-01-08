@@ -60,7 +60,22 @@ TUNISIA_TZ = pytz.timezone("Africa/Tunis")
 
 # --- FIN MODIFIÉ ---
 
-app = FastAPI(title=APP_NAME)
+# --- MIGRATIONS ---
+from contextlib import asynccontextmanager
+from .migrations import run_migrations
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Run migrations
+    await run_migrations()
+    yield
+    # Shutdown
+    pass
+
+app = FastAPI(
+    title=APP_NAME,
+    lifespan=lifespan
+)
 
 @app.get("/api/health")
 def health_check():
@@ -434,6 +449,12 @@ async def employees_page(
         manager_branch_id = user.get("branch_id")
         branches_query = branches_query.where(Branch.id == manager_branch_id)
         employees_query = employees_query.where(Employee.branch_id == manager_branch_id)
+    else:
+        # Admin Filter
+        branch_filter_id = request.query_params.get("branch_id")
+        if branch_filter_id and branch_filter_id.isdigit():
+             manager_branch_id = int(branch_filter_id)
+             employees_query = employees_query.where(Employee.branch_id == manager_branch_id)
 
     res_branches = await db.execute(branches_query)
     res_employees = await db.execute(employees_query)
@@ -510,10 +531,22 @@ async def attendance_page(
     attendance_query = select(Attendance).options(selectinload(Attendance.employee)).order_by(Attendance.date.desc(), Attendance.created_at.desc()) # Charger l'employé
 
     permissions = user.get("permissions", {})
+    
+    # Load Branches for Admin Selector
+    res_branches = await db.execute(select(Branch))
+    all_branches = res_branches.scalars().all()
+
     if not permissions.get("is_admin"):
         branch_id = user.get("branch_id")
         employees_query = employees_query.where(Employee.branch_id == branch_id)
         attendance_query = attendance_query.join(Employee).where(Employee.branch_id == branch_id)
+    else:
+        # Admin Filter
+        branch_filter_id = request.query_params.get("branch_id")
+        if branch_filter_id and branch_filter_id.isdigit():
+             bid = int(branch_filter_id)
+             employees_query = employees_query.where(Employee.branch_id == bid)
+             attendance_query = attendance_query.join(Employee).where(Employee.branch_id == bid)
 
     res_employees = await db.execute(employees_query)
     res_attendance = await db.execute(attendance_query.limit(100))
@@ -522,6 +555,8 @@ async def attendance_page(
         "request": request, "user": user, "app_name": APP_NAME,
         "employees": res_employees.scalars().all(),
         "attendance": res_attendance.scalars().all(),
+        "branches": all_branches, # Passed for Admin Selector
+        "selected_branch_id": request.query_params.get("branch_id"), 
         "today_date": get_tunisia_today().isoformat()
     }
     return templates.TemplateResponse("attendance.html", context)
@@ -738,16 +773,31 @@ async def expenses_page(
     expenses_query = select(models.Expense).options(selectinload(models.Expense.creator)).order_by(models.Expense.date.desc(), models.Expense.created_at.desc())
 
     permissions = user.get("permissions", {})
+    
+    # Load Branches for Admin Selector
+    res_branches = await db.execute(select(Branch))
+    all_branches = res_branches.scalars().all()
+
     if not permissions.get("is_admin"):
         branch_id = user.get("branch_id")
-        # Filter expenses created by users in the same branch
-        expenses_query = expenses_query.join(models.User, models.Expense.created_by == models.User.id).where(models.User.branch_id == branch_id)
+        # Filter expenses created by users in the same branch OR linked to branch
+        # expenses_query = expenses_query.join(models.User, models.Expense.created_by == models.User.id).where(models.User.branch_id == branch_id)
+        # Use simpler logic: Expense.branch_id matches user branch (or fallback to User link)
+        expenses_query = expenses_query.where(models.Expense.branch_id == branch_id)
+        # Fallback for old data? Let's assume migration is done or new data is key.
+    else:
+        # Admin Filter
+        branch_filter_id = request.query_params.get("branch_id")
+        if branch_filter_id and branch_filter_id.isdigit():
+             expenses_query = expenses_query.where(models.Expense.branch_id == int(branch_filter_id))
 
     res_expenses = await db.execute(expenses_query.limit(100))
     
     context = {
         "request": request, "user": user, "app_name": APP_NAME,
         "expenses": res_expenses.scalars().all(),
+        "branches": all_branches, # Passed for Admin Selector
+        "selected_branch_id": request.query_params.get("branch_id"), 
         "today_date": get_tunisia_today().isoformat()
     }
     return templates.TemplateResponse("expenses.html", context)
@@ -759,14 +809,19 @@ async def expenses_create(
     amount: Annotated[Decimal, Form()],
     date: Annotated[dt_date, Form()],
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(web_require_permission("can_manage_expenses"))
+    user: dict = Depends(web_require_permission("can_manage_expenses")),
+    branch_id: Annotated[int | None, Form()] = None # Added branch_id
 ):
     if amount <= 0:
         return RedirectResponse(request.url_for('expenses_page'), status_code=status.HTTP_302_FOUND)
 
+    target_branch_id = branch_id
+    if not user.get("permissions", {}).get("is_admin"):
+        target_branch_id = user.get("branch_id")
+
     new_expense = models.Expense(
         description=description, amount=amount, date=date,
-        category=None, created_by=user['id']
+        category=None, created_by=user['id'], branch_id=target_branch_id
     )
     db.add(new_expense)
     await db.commit()
@@ -816,10 +871,22 @@ async def leaves_page(
     # === FIN DU FIX ===
 
     permissions = user.get("permissions", {})
+    
+    # Load Branches for Admin Selector
+    res_branches = await db.execute(select(Branch))
+    all_branches = res_branches.scalars().all()
+
     if not permissions.get("is_admin"):
         branch_id = user.get("branch_id")
         employees_query = employees_query.where(Employee.branch_id == branch_id)
         leaves_query = leaves_query.join(Employee).where(Employee.branch_id == branch_id)
+    else:
+        # Admin Filter
+        branch_filter_id = request.query_params.get("branch_id")
+        if branch_filter_id and branch_filter_id.isdigit():
+             bid = int(branch_filter_id)
+             employees_query = employees_query.where(Employee.branch_id == bid)
+             leaves_query = leaves_query.join(Employee).where(Employee.branch_id == bid)
 
     res_employees = await db.execute(employees_query)
     res_leaves = await db.execute(leaves_query.limit(100))
@@ -828,6 +895,8 @@ async def leaves_page(
         "request": request, "user": user, "app_name": APP_NAME,
         "employees": res_employees.scalars().all(),
         "leaves": res_leaves.scalars().all(),
+        "branches": all_branches, # Passed for Admin Selector
+        "selected_branch_id": request.query_params.get("branch_id"), 
     }
     return templates.TemplateResponse("leaves.html", context)
 
@@ -1121,8 +1190,21 @@ async def pay_employee_page(
         .options(selectinload(Pay.employee), selectinload(Pay.creator))
         .order_by(Pay.date.desc(), Pay.created_at.desc())
     )
+    
+    # Load Branches for Admin Selector
+    res_branches = await db.execute(select(Branch))
+    all_branches = res_branches.scalars().all()
+
     if not permissions.get("is_admin"):
+        employees_query = employees_query.where(Employee.branch_id == user.get("branch_id"))
         recent_payments_query = recent_payments_query.join(Employee).where(Employee.branch_id == user.get("branch_id"))
+    else:
+        # Admin Filter
+        branch_filter_id = request.query_params.get("branch_id")
+        if branch_filter_id and branch_filter_id.isdigit():
+             bid = int(branch_filter_id)
+             employees_query = employees_query.where(Employee.branch_id == bid)
+             recent_payments_query = recent_payments_query.join(Employee).where(Employee.branch_id == bid)
         
     res_recent_payments = await db.execute(recent_payments_query.limit(10))
     recent_payments = res_recent_payments.scalars().all()
@@ -1132,6 +1214,8 @@ async def pay_employee_page(
     context = {
         "request": request, "user": user, "app_name": APP_NAME,
         "employees": res_employees.scalars().all(),
+        "branches": all_branches, # Passed for Admin Selector
+        "selected_branch_id": request.query_params.get("branch_id"), # For UI state
         "today_date": get_tunisia_today().isoformat(),
         "recent_payments": recent_payments # <-- NOUVEAU: Ajout au contexte
     }

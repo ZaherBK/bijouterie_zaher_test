@@ -3,6 +3,22 @@
 {% block content %}
 <h2 class="page-title"><i class="fa-solid fa-users"></i> Gestion des Employés</h2>
 
+{% if user.permissions.is_admin %}
+<div class="card form-card mb-4" style="background: #e3f2fd; border-left: 5px solid #2196f3;">
+  <h3><i class="fa-solid fa-filter"></i> Filtrer par Magasin (Admin)</h3>
+  <form method="get" action="{{ url_for('employees_page') }}">
+    <select name="branch_id" class="form-control" onchange="this.form.submit()">
+      <option value="">-- Tous les Magasins --</option>
+      {% for b in branches %}
+      <option value="{{ b.id }}" {% if selected_branch_id and selected_branch_id|int==b.id %}selected{% endif %}>
+        {{ b.name }} ({{ b.city }})
+      </option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+{% endif %}
+
 <div class="card form-card">
   <h3><i class="fa-solid fa-user-plus"></i> Ajouter un Nouvel Employé</h3>
   <form method="post" action="{{ request.url_for('employees_create') }}">

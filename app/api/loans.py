@@ -5,7 +5,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload # <--- AJOUTÉ
 
-from app.deps import get_db
+from app.deps import get_db, api_current_user
 from app.auth import api_require_permission
 from app.models import (
     Loan, LoanSchedule, LoanRepayment,
@@ -41,22 +41,32 @@ async def _check_eligibility(db: AsyncSession, employee_id: int, amount_per_term
     if salary > 0 and (monthly_equivalent / salary) > max_dti:
         raise HTTPException(400, "DTI exceeds company limit")
 
-@router.get("/", response_model=list[LoanOut], dependencies=[Depends(api_require_permission("can_manage_loans"))])
+@router.get("/", response_model=list[LoanOut])
 async def list_loans(
     status: LoanStatus | None = None, 
     employee_id: int | None = None, 
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(api_require_permission("can_manage_loans"))
+    user = Depends(api_current_user) # Changed to allow basic access (filtered)
 ):
     # Ensure employee is loaded to avoid Lazy Loading errors
     q = select(Loan).options(selectinload(Loan.employee), selectinload(Loan.creator))
     
     # Permission Check
-    permissions = user.get("permissions", {})
-    if not permissions.get("is_admin"):
+    permissions = user.permissions
+    is_admin = permissions.is_admin if permissions else False
+
+    if not is_admin:
         # Filter by user's branch
-        branch_id = user.get("branch_id")
+        branch_id = user.branch_id
         q = q.join(Employee).where(Employee.branch_id == branch_id)
+
+    if status:
+        q = q.where(Loan.status == status)
+    if employee_id:
+        q = q.where(Loan.employee_id == employee_id)
+    q = q.order_by(Loan.created_at.desc())
+    res = await db.execute(q)
+    return res.scalars().all()
 
     if status:
         q = q.where(Loan.status == status)

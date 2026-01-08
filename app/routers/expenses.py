@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
@@ -29,8 +29,20 @@ async def create_expense(
     user: User = Depends(api_current_user)
 ):
     """Create a new expense."""
+    
+    # Logic for Branch assignment
+    target_branch_id = payload.branch_id
+    if not user.permissions.is_admin:
+        # Managers are forced to their own branch
+        target_branch_id = user.branch_id
+    
+    # Create Expense
+    # Exclude branch_id from payload dump to manually set it
+    expense_data = payload.model_dump(exclude={"branch_id"})
+    
     expense = Expense(
-        **payload.model_dump(),
+        **expense_data,
+        branch_id=target_branch_id,
         created_by=user.id
     )
     db.add(expense)
@@ -46,6 +58,7 @@ async def create_expense(
 
 @router.get("/", response_model=List[ExpenseOut])
 async def list_expenses(
+    branch_id: int | None = None, # Admin filter
     db: AsyncSession = Depends(get_db),
     user: User = Depends(api_current_user)
 ):
@@ -55,7 +68,34 @@ async def list_expenses(
     # Permission Check
     if not user.permissions.is_admin:
         # Filter by user's branch
-        query = query.join(User, Expense.created_by == User.id).where(User.branch_id == user.branch_id)
+        query = query.where(Expense.branch_id == user.branch_id)
+        # Verify: Old code used Join User. Now we have branch_id on Expense directly (after migration).
+        # We should use Expense.branch_id directly for new data.
+        # BUT for old data (before migration), branch_id is NULL.
+        # Fallback for null? 
+        # Actually, migration adds column but doesn't fill it.
+        # We should keep the OR logic or just rely on Join execution for old data?
+        # Let's stick to the reliable JOIN if branch_id is null?
+        # Simplified: Filter where Expense.branch_id == user.branch_id OR (Expense.branch_id is NULL AND Creator.branch_id == user.branch_id)
+        # This is complicated.
+        # Let's assume the migration is forward-looking.
+        # For backward compatibility, we can keep using JOIN User if Expense.branch_id is not set?
+        # Let's stick to the previous JOIN logic for now, OR updated logic?
+        # Previous logic:
+        # query = query.join(User, Expense.created_by == User.id).where(User.branch_id == user.branch_id)
+        # This works if the Creator is still in the same branch.
+        
+        # Proper segregation:
+        # If Expense.branch_id is set -> check it.
+        # If not -> check Creator's branch.
+        # SQL: WHERE COALESCE(Expense.branch_id, User.branch_id) == user.branch_id
+        # Need to join User.
+        query = query.outerjoin(User, Expense.created_by == User.id)
+        query = query.where(func.coalesce(Expense.branch_id, User.branch_id) == user.branch_id)
+    else:
+        # Admin: Filter if requested
+        if branch_id:
+             query = query.where(Expense.branch_id == branch_id)
         
     res = await db.execute(query.limit(100))
     return res.scalars().all()

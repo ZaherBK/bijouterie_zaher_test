@@ -5,6 +5,23 @@
   <i class="fa-solid fa-hand-holding-dollar"></i> Enregistrer un Paiement
 </h2>
 
+
+{% if user.permissions.is_admin %}
+<div class="card form-card mb-4" style="background: #e3f2fd; border-left: 5px solid #2196f3;">
+  <h3><i class="fa-solid fa-filter"></i> Filtrer par Magasin (Admin)</h3>
+  <form method="get" action="{{ url_for('pay_employee_page') }}">
+    <select name="branch_id" class="form-control" onchange="this.form.submit()">
+      <option value="">-- Tous les Magasins --</option>
+      {% for b in branches %}
+      <option value="{{ b.id }}" {% if selected_branch_id and selected_branch_id|int==b.id %}selected{% endif %}>
+        {{ b.name }} ({{ b.city }})
+      </option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+{% endif %}
+
 <div class="card form-card">
   <h3><i class="fa-solid fa-file-invoice-dollar"></i> Nouveau Paiement</h3>
   <form method="post" action="{{ request.url_for('pay_employee_action') }}">
