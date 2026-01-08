@@ -82,6 +82,19 @@ def health_check():
     """Lightweight endpoint for keep-alive pings."""
     return {"status": "ok"}
 
+@app.get("/fix-migration")
+async def fix_migration_manual(db: AsyncSession = Depends(get_db)):
+    """Manual trigger to fix database missing column."""
+    try:
+        # Try adding the column
+        # Postgres supports IF NOT EXISTS for ADD COLUMN in newer versions.
+        # If not, we catch the error.
+        await db.execute(text("ALTER TABLE expenses ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
+        await db.commit()
+        return {"status": "success", "message": "Migration attempted: added branch_id to expenses."}
+    except Exception as e:
+        return {"status": "error", "message": f"Migration failed: {str(e)}"}
+
 # --- 1. API Routers ---
 app.include_router(users.router)
 app.include_router(branches.router)
