@@ -22,7 +22,7 @@ import time
 import os
 
 # ===================== CONFIGURATION =====================
-CLOUD_API_URL = "https://hr-sync.onrender.com"  # Your hosted website URL
+CLOUD_API_URL = "https://bijouteriezaher-gestion.onrender.com/"  # Your hosted website URL
 CLOUD_EMAIL = "zaher@local.com"
 CLOUD_PASSWORD = "5"
 
@@ -276,6 +276,17 @@ def run_sync():
     sync_to_local_mysql(token, deposits, expenses, payments, loans)
 
 
+
+def ping_server():
+    """Ping health endpoint to keep server awake."""
+    try:
+        url = f"{CLOUD_API_URL}/api/health"
+        requests.get(url, timeout=10)
+        print(f"[{datetime.now():%H:%M:%S}] [KEEP-ALIVE] Ping sent to keep server awake.")
+    except Exception:
+        pass  # Fail silently, main sync handles errors
+
+
 def main():
     """Main entry point - runs continuous sync loop."""
     print("=" * 60)
@@ -284,17 +295,23 @@ def main():
     print(f"  Cloud API: {CLOUD_API_URL}")
     print(f"  Local DB:  {LOCAL_DB_SCHEMA}@{LOCAL_DB_HOST}")
     print(f"  Sync as:   (Dynamically detected via API)")
+    print(f"  Mode:      KEEP-ALIVE ENABLED (2 min interval)")
     print("=" * 60)
     print("\nPress Ctrl+C to stop\n")
     
     # Run initial sync
     run_sync()
     
-    # Continuous loop - sync every 5 minutes
+    # Continuous loop - sync every 2 minutes to keep Render awake
     try:
         while True:
-            print(f"\n[{datetime.now():%H:%M:%S}] Waiting 5 minutes until next sync...")
-            time.sleep(300)  # 5 minutes
+            print(f"\n[{datetime.now():%H:%M:%S}] Waiting 2 minutes until next sync...")
+            time.sleep(120)  # 2 minutes (prevents Render 15min sleep)
+            
+            # Send Keep-Alive Ping
+            ping_server()
+            
+            # Run Sync
             run_sync()
     except KeyboardInterrupt:
         print(f"\n\n[{datetime.now():%H:%M:%S}] Sync agent stopped by user.")

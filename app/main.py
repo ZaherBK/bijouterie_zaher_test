@@ -62,6 +62,11 @@ TUNISIA_TZ = pytz.timezone("Africa/Tunis")
 
 app = FastAPI(title=APP_NAME)
 
+@app.get("/api/health")
+def health_check():
+    """Lightweight endpoint for keep-alive pings."""
+    return {"status": "ok"}
+
 # --- 1. API Routers ---
 app.include_router(users.router)
 app.include_router(branches.router)
