@@ -477,7 +477,10 @@ body{
 
 /* ---------- Sidebar ---------- */
 .sidebar{
-  top:56px; height:calc(100vh - 56px);
+  top:56px; height: calc(100vh - 56px);
+  position: fixed; /* Fix position to prevent scrolling away */
+  overflow-y: auto; /* Enable scrolling inside sidebar if needed */
+  z-index: 100;
   background: linear-gradient(180deg, rgba(18,23,39,.95), rgba(18,23,39,.88));
   border-right: var(--border);
   padding-top:1rem;

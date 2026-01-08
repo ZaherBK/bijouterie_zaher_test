@@ -793,11 +793,15 @@ async def expenses_page(
 
     if not permissions.get("is_admin"):
         branch_id = user.get("branch_id")
-        # Filter expenses created by users in the same branch OR linked to branch
-        # expenses_query = expenses_query.join(models.User, models.Expense.created_by == models.User.id).where(models.User.branch_id == branch_id)
-        # Use simpler logic: Expense.branch_id matches user branch (or fallback to User link)
-        expenses_query = expenses_query.where(models.Expense.branch_id == branch_id)
-        # Fallback for old data? Let's assume migration is done or new data is key.
+        # Filter expenses created by users in the same branch OR linked to branch (Legacy Support)
+        # Logic: (Expense.branch_id == branch_id) OR (Expense.branch_id IS NULL AND Creator.branch_id == branch_id)
+        expenses_query = expenses_query.outerjoin(models.User, models.Expense.created_by == models.User.id)
+        expenses_query = expenses_query.where(
+            or_(
+                models.Expense.branch_id == branch_id,
+                and_(models.Expense.branch_id.is_(None), models.User.branch_id == branch_id)
+            )
+        )
     else:
         # Admin Filter
         branch_filter_id = request.query_params.get("branch_id")

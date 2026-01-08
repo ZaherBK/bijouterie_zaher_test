@@ -68,30 +68,15 @@ async def list_expenses(
     # Permission Check
     if not user.permissions.is_admin:
         # Filter by user's branch
-        query = query.where(Expense.branch_id == user.branch_id)
-        # Verify: Old code used Join User. Now we have branch_id on Expense directly (after migration).
-        # We should use Expense.branch_id directly for new data.
-        # BUT for old data (before migration), branch_id is NULL.
-        # Fallback for null? 
-        # Actually, migration adds column but doesn't fill it.
-        # We should keep the OR logic or just rely on Join execution for old data?
-        # Let's stick to the reliable JOIN if branch_id is null?
-        # Simplified: Filter where Expense.branch_id == user.branch_id OR (Expense.branch_id is NULL AND Creator.branch_id == user.branch_id)
-        # This is complicated.
-        # Let's assume the migration is forward-looking.
-        # For backward compatibility, we can keep using JOIN User if Expense.branch_id is not set?
-        # Let's stick to the previous JOIN logic for now, OR updated logic?
-        # Previous logic:
-        # query = query.join(User, Expense.created_by == User.id).where(User.branch_id == user.branch_id)
-        # This works if the Creator is still in the same branch.
-        
-        # Proper segregation:
-        # If Expense.branch_id is set -> check it.
-        # If not -> check Creator's branch.
-        # SQL: WHERE COALESCE(Expense.branch_id, User.branch_id) == user.branch_id
-        # Need to join User.
+        # Logic: (Expense.branch_id == user.branch_id) OR (Expense.branch_id IS NULL AND Creator.branch_id == user.branch_id)
+        from sqlalchemy import or_, and_
         query = query.outerjoin(User, Expense.created_by == User.id)
-        query = query.where(func.coalesce(Expense.branch_id, User.branch_id) == user.branch_id)
+        query = query.where(
+            or_(
+                Expense.branch_id == user.branch_id,
+                and_(Expense.branch_id.is_(None), User.branch_id == user.branch_id)
+            )
+        )
     else:
         # Admin: Filter if requested
         if branch_id:
