@@ -496,7 +496,8 @@ async def employees_page(
         "request": request, "user": user, "app_name": APP_NAME,
         "employees": res_employees.scalars().all(),
         "branches": res_branches.scalars().all(),
-        "manager_branch_id": manager_branch_id
+        "manager_branch_id": manager_branch_id,
+        "selected_branch_id": request.query_params.get("branch_id") # FIX: Pass for Admin UI state
     }
     return templates.TemplateResponse("employees.html", context)
 
@@ -2302,24 +2303,31 @@ async def import_data(
 
 @app.get("/loans", name="loans_page")
 async def loans_page(request: Request, db: AsyncSession = Depends(get_db), user: dict = Depends(web_require_permission("can_manage_loans"))):
+    # Load Branches for Admin Selector
+    res_branches = await db.execute(select(Branch).order_by(Branch.name))
+    branches = res_branches.scalars().all()
+
     employees_query = select(Employee).where(Employee.active==True).order_by(Employee.first_name)
+    loans_query = select(Loan).options(selectinload(Loan.employee), selectinload(Loan.creator)).order_by(Loan.start_date.desc(), Loan.created_at.desc())
+    
     permissions = user.get("permissions", {})
+    selected_branch_id = request.query_params.get("branch_id")
+
     if not permissions.get("is_admin"):
-        employees_query = employees_query.where(Employee.branch_id == user.get("branch_id"))
+        user_branch_id = user.get("branch_id")
+        employees_query = employees_query.where(Employee.branch_id == user_branch_id)
+        loans_query = loans_query.join(Employee).where(Employee.branch_id == user_branch_id)
+    else:
+        # Admin Filter
+        if selected_branch_id and selected_branch_id.isdigit():
+             bid = int(selected_branch_id)
+             employees_query = employees_query.where(Employee.branch_id == bid)
+             loans_query = loans_query.join(Employee).where(Employee.branch_id == bid)
 
     employees = (await db.execute(employees_query)).scalars().all()
-
-    # === FIX: Ajout du tri secondaire par created_at ===
-    loans_query = select(Loan).options(selectinload(Loan.employee), selectinload(Loan.creator)).order_by(Loan.start_date.desc(), Loan.created_at.desc())
-    # === FIN DU FIX ===
-    if not permissions.get("is_admin"):
-        loans_query = loans_query.join(Employee).where(Employee.branch_id == user.get("branch_id"))
-
     loans = (await db.execute(loans_query.limit(200))).scalars().all()
     
-    # --- ADD THIS LINE ---
     today_date_iso = get_tunisia_today().isoformat()
-    # --- END ADD ---
 
     return templates.TemplateResponse("loans.html", {
         "request": request, 
@@ -2327,7 +2335,8 @@ async def loans_page(request: Request, db: AsyncSession = Depends(get_db), user:
         "app_name": APP_NAME, 
         "employees": employees, 
         "loans": loans,
-        # --- AND ADD THIS LINE ---
+        "branches": branches,
+        "selected_branch_id": selected_branch_id,
         "today_date": today_date_iso 
     })
 

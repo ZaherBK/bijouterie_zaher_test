@@ -14,11 +14,11 @@
 {% if user.permissions.is_admin %}
 <div class="card form-card mb-4" style="border-left: 5px solid #2196f3;">
     <h3><i class="fa-solid fa-filter"></i> Filtrer par Magasin (Admin)</h3>
-    <form method="get" action="{{ url_for('expenses_page') }}">
+    <form method="get" action="{{ request.url_for('expenses_page') }}">
         <select name="branch_id" class="form-control" onchange="this.form.submit()">
-            <option value="">-- Tous les Magasins --</option>
+            <option value="" {% if not selected_branch_id %}selected{% endif %}>-- Tous les Magasins --</option>
             {% for b in branches %}
-            <option value="{{ b.id }}" {% if selected_branch_id and selected_branch_id|int==b.id %}selected{% endif %}>
+            <option value="{{ b.id }}" {% if selected_branch_id|string==b.id|string %}selected{% endif %}>
                 {{ b.name }} ({{ b.city }})
             </option>
             {% endfor %}
