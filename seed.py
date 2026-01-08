@@ -81,7 +81,17 @@ async def seed():
             await session.commit()
             print(f"✅ {len(users_to_create)} utilisateurs créés avec succès !")
         else:
-            print("Utilisateur admin 'zaher@local' déjà présent. Seeding des utilisateurs ignoré.")
+            print("Utilisateur admin 'zaher@local' déjà présent.")
+            # Update admin name if needed
+            admin_user = res_admin.scalar_one_or_none()
+            if admin_user and admin_user.full_name != "BK ZAHER":
+                print("Mise à jour du nom de l'admin vers 'BK ZAHER'...")
+                admin_user.full_name = "BK ZAHER"
+                session.add(admin_user)
+                await session.commit()
+                print("✅ Nom de l'admin mis à jour.")
+            else:
+                print("Nom de l'admin correct. Seeding des utilisateurs ignoré.")
 
         print("Script de seeding terminé.")
 

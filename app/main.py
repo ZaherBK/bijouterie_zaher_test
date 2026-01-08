@@ -724,15 +724,14 @@ async def expenses_create(
     amount: Annotated[Decimal, Form()],
     date: Annotated[dt_date, Form()],
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(web_require_permission("can_manage_expenses")),
-    category: Annotated[str, Form()] = None
+    user: dict = Depends(web_require_permission("can_manage_expenses"))
 ):
     if amount <= 0:
         return RedirectResponse(request.url_for('expenses_page'), status_code=status.HTTP_302_FOUND)
 
     new_expense = models.Expense(
         description=description, amount=amount, date=date,
-        category=category or None, created_by=user['id']
+        category=None, created_by=user['id']
     )
     db.add(new_expense)
     await db.commit()
