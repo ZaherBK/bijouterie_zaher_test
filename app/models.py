@@ -135,6 +135,7 @@ class Attendance(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # Relations
     employee = relationship("Employee", back_populates="attendances")
+    creator = relationship("User")
 
 
 class LeaveType(str, enum.Enum):

@@ -553,6 +553,58 @@ async def employees_create(
     return RedirectResponse(request.url_for('employees_page'), status_code=status.HTTP_302_FOUND)
 
 
+@app.post("/employees/{employee_id}/update", name="employees_update")
+async def employees_update(
+    request: Request,
+    employee_id: int,
+    first_name: Annotated[str, Form()],
+    last_name: Annotated[str, Form()],
+    position: Annotated[str, Form()],
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(web_require_permission("can_manage_employees")),
+    branch_id: Annotated[int | None, Form()] = None,
+    cin: Annotated[str, Form()] = None,
+    salary: Annotated[Decimal, Form()] = None,
+    has_cnss: bool = Form(False)
+):
+    # Fetch Employee
+    res_emp = await db.execute(select(Employee).where(Employee.id == employee_id))
+    employee = res_emp.scalar_one_or_none()
+    
+    if not employee:
+        return RedirectResponse(request.url_for('employees_page'), status_code=status.HTTP_302_FOUND)
+
+    permissions = user.get("permissions", {})
+    
+    # Permission Check
+    if not permissions.get("is_admin"):
+        if user.get("branch_id") != employee.branch_id:
+             return RedirectResponse(request.url_for('employees_page'), status_code=status.HTTP_403_FORBIDDEN)
+        branch_id = employee.branch_id
+    else:
+        if not branch_id:
+            branch_id = employee.branch_id
+
+    # Update Fields
+    employee.first_name = first_name
+    employee.last_name = last_name
+    employee.cin = cin or None
+    employee.position = position
+    employee.salary = salary
+    employee.branch_id = branch_id
+    employee.has_cnss = has_cnss
+
+    await db.commit()
+    await db.refresh(employee)
+
+    await log(
+        db, user['id'], "update", "employee", employee.id,
+        employee.branch_id, f"Employé modifié: {first_name} {last_name}"
+    )
+
+    return RedirectResponse(request.url_for('employees_page'), status_code=status.HTTP_302_FOUND)
+
+
 # --- Absences (Attendance) ---
 # ... (Attendance routes remain the same - not shown for brevity) ...
 @app.get("/attendance", response_class=HTMLResponse, name="attendance_page")
