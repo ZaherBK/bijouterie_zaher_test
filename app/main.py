@@ -205,7 +205,12 @@ async def get_current_db_user(
         return None
 
     result = await db.execute(
-        select(models.User).options(selectinload(models.User.permissions)).where(models.User.email == user_email)
+        select(models.User)
+        .options(
+            selectinload(models.User.permissions),
+            selectinload(models.User.branch)
+        )
+        .where(models.User.email == user_email)
     )
     return result.scalar_one_or_none()
 

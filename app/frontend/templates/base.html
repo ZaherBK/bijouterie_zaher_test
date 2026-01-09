@@ -48,7 +48,17 @@
             <i class="bi bi-moon-stars-fill"></i>
           </button>
           {% if user %}
-          <span class="nav-link px-3 d-none d-sm-block">Bonjour, {{ user.full_name }}</span>
+          <span class="nav-link px-3 d-none d-sm-block">
+            Bonjour, {{ user.full_name }}
+            {% if user.permissions %}
+            <span class="badge bg-secondary ms-2" style="font-size: 0.75rem; vertical-align: text-top;">{{
+              user.permissions.name }}</span>
+            {% endif %}
+            {% if user.branch %}
+            <span class="badge bg-primary ms-1" style="font-size: 0.75rem; vertical-align: text-top;">{{
+              user.branch.name }}</span>
+            {% endif %}
+          </span>
           <a class="nav-link px-3" href="{{ url_for('logout') }}" title="Déconnexion">
             <i class="bi bi-box-arrow-right d-inline d-sm-none"></i>
             <span class="d-none d-sm-inline">Déconnexion</span>
