@@ -400,7 +400,7 @@ async def home(
             branch_id=current_user.branch_id, # Use branch_id from the full user object
              # Fetch a broader range of activities for the admin dashboard view
             entity_types=["leave", "attendance", "deposit", "pay", "loan", "expense", "user", "role", "employee", "branch", "all_logs"],
-            limit=15 # Limit to the latest 15 activities for the dashboard
+            limit=50 # Increased activity limit to 50 per user request
         )
         # --- END FIX ---
         # Optional Eager Loading (commented out as 'latest' might handle it)

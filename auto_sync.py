@@ -62,7 +62,9 @@ def login_to_cloud():
 def get_unsynced_data(token):
     """Fetch today's deposits and expenses from cloud API."""
     headers = {"Authorization": f"Bearer {token}"}
-    today_str = date.today().isoformat()
+    today = date.today()
+    start_date_obj = today - timedelta(days=30)
+    start_date_str = start_date_obj.isoformat()
     
     deposits = []
     expenses = []
@@ -74,8 +76,9 @@ def get_unsynced_data(token):
         resp = requests.get(f"{CLOUD_API_URL}/api/deposits/", headers=headers, timeout=30)
         if resp.status_code == 200:
             all_deposits = resp.json()
-            deposits = [d for d in all_deposits if d.get('date') == today_str]
-            print(f"[{datetime.now():%H:%M:%S}] Found {len(deposits)} deposits for today")
+            # MODIFIED: Check last 30 days
+            deposits = [d for d in all_deposits if d.get('date') and d.get('date') >= start_date_str]
+            print(f"[{datetime.now():%H:%M:%S}] Found {len(deposits)} deposits (last 30 days)")
         else:
             print(f"[{datetime.now():%H:%M:%S}] [ERROR] Deposits API Error: {resp.status_code} {resp.text}")
     except Exception as e:
@@ -86,8 +89,9 @@ def get_unsynced_data(token):
         resp = requests.get(f"{CLOUD_API_URL}/api/expenses/", headers=headers, timeout=30)
         if resp.status_code == 200:
             all_expenses = resp.json()
-            expenses = [e for e in all_expenses if e.get('date') == today_str]
-            print(f"[{datetime.now():%H:%M:%S}] Found {len(expenses)} expenses for today")
+            # MODIFIED: Check last 30 days
+            expenses = [e for e in all_expenses if e.get('date') and e.get('date') >= start_date_str]
+            print(f"[{datetime.now():%H:%M:%S}] Found {len(expenses)} expenses (last 30 days)")
         else:
             print(f"[{datetime.now():%H:%M:%S}] [ERROR] Expenses API Error: {resp.status_code} {resp.text}")
     except Exception as e:
@@ -101,9 +105,9 @@ def get_unsynced_data(token):
         resp = requests.get(f"{CLOUD_API_URL}/api/loans/", headers=headers, timeout=30)
         if resp.status_code == 200:
             all_loans = resp.json()
-            # Filter by start_date == today
-            loans = [l for l in all_loans if l.get('start_date') == today_str]
-            print(f"[{datetime.now():%H:%M:%S}] Found {len(loans)} loans for today")
+            # MODIFIED: Check last 30 days (filter by start_date)
+            loans = [l for l in all_loans if l.get('start_date') and l.get('start_date') >= start_date_str]
+            print(f"[{datetime.now():%H:%M:%S}] Found {len(loans)} loans (last 30 days)")
         else:
             print(f"[{datetime.now():%H:%M:%S}] [ERROR] Loans API Error: {resp.status_code} {resp.text}")
     except Exception as e:
@@ -121,6 +125,18 @@ def sync_to_local_mysql(token, deposits, expenses, payments, loans):
         print(f"[{datetime.now():%H:%M:%S}] Nothing to sync")
         return 0
     
+    # Collect all dates involved
+    involved_dates = set()
+    for item in deposits: involved_dates.add(item.get('date'))
+    for item in expenses: involved_dates.add(item.get('date'))
+    for item in loans: involved_dates.add(item.get('start_date'))
+    
+    involved_dates.discard(None) # Remove None if any
+    
+    # If no valid dates, return
+    if not involved_dates:
+        return 0
+
     inserted = 0
     try:
         connection = pymysql.connect(
@@ -139,13 +155,17 @@ def sync_to_local_mysql(token, deposits, expenses, payments, loans):
             result = cursor.fetchone()
             current_num_dep = int(result['max_num']) if result and result['max_num'] else 0
             
-            # Get existing to avoid duplicates (check by LIBDEP + DATDEP + MONTANT)
-            today_str = date.today().strftime('%Y-%m-%d')
-            cursor.execute(
-                "SELECT LIBDEP, MONTANT FROM fdepense WHERE DATDEP = %s",
-                (today_str,)
+            # Get existing records for involved dates ONLY
+            # Dynamically build query: SELECT DATDEP, LIBDEP, MONTANT FROM fdepense WHERE DATDEP IN (...)
+            format_strings = ','.join(['%s'] * len(involved_dates))
+            query = f"SELECT DATDEP, LIBDEP, MONTANT FROM fdepense WHERE DATDEP IN ({format_strings})"
+            cursor.execute(query, tuple(involved_dates))
+            
+            # Key: (date_str, libelle, amount)
+            existing = set(
+                (str(row['DATDEP']), row['LIBDEP'], float(row['MONTANT'])) 
+                for row in cursor.fetchall()
             )
-            existing = set((row['LIBDEP'], float(row['MONTANT'])) for row in cursor.fetchall())
             
             # Process Deposits (CODDEP = 2)
             for d in deposits:
@@ -159,8 +179,9 @@ def sync_to_local_mysql(token, deposits, expenses, payments, loans):
                 
                 lib_dep = lib_dep[:45]
                 amount = float(d['amount'])
+                date_str = str(d['date'])
                 
-                if (lib_dep, amount) in existing: continue
+                if (date_str, lib_dep, amount) in existing: continue
                 
                 current_num_dep += 1
                 creator_name = (d.get('creator') or {}).get('full_name', SYNC_USER_NAME)[:20]
@@ -174,8 +195,9 @@ def sync_to_local_mysql(token, deposits, expenses, payments, loans):
             for e in expenses:
                 lib_dep = e.get('description', 'Dépense')[:45]
                 amount = float(e['amount'])
+                date_str = str(e['date'])
                 
-                if (lib_dep, amount) in existing: continue
+                if (date_str, lib_dep, amount) in existing: continue
                 
                 current_num_dep += 1
                 creator_name = (e.get('creator') or {}).get('full_name', SYNC_USER_NAME)[:20]
@@ -197,8 +219,9 @@ def sync_to_local_mysql(token, deposits, expenses, payments, loans):
                 lib_dep = f"{emp_name} - {note}"
                 lib_dep = lib_dep[:45]
                 amount = float(l['principal'])
+                date_str = str(l['start_date'])
                 
-                if (lib_dep, amount) in existing: continue
+                if (date_str, lib_dep, amount) in existing: continue
                 
                 current_num_dep += 1
                 creator_name = (l.get('creator') or {}).get('full_name', SYNC_USER_NAME)[:20]
