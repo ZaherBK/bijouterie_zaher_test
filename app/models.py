@@ -15,14 +15,43 @@ from sqlalchemy import (
     Text,
     func,
     Numeric,
-    desc  # <--- Assurez-vous que 'desc' est importé
+    desc,
+    UniqueConstraint  # <--- Fix: Import UniqueConstraint
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
 
+# ... (rest of imports/models) ...
 
-# --- NOUVEAU MODÈLE : Role ---
+# --- SALES SUMMARY MODEL ---
+class SalesSummary(Base):
+    __tablename__ = "sales_summaries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    date: Mapped[date] = mapped_column(Date, index=True)
+    
+    # "Local User Name" (e.g. "ANISSA") sent from local DB
+    local_user_name: Mapped[str] = mapped_column(String(255))
+    
+    # Store Identifier (e.g. "Ariana" or "Nabeul")
+    store_name: Mapped[str] = mapped_column(String(50))
+
+    # Calculated Metrics
+    quantity_sold: Mapped[int] = mapped_column(Integer, default=0) # Number of items (lines from detfact)
+    total_revenue: Mapped[Decimal] = mapped_column(Numeric(19, 4), default=0.0) # Total Sales Amount
+
+    # Link to Employee (if mapped)
+    employee_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id"), nullable=True)
+    employee = relationship("Employee", back_populates="sales_summaries")
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        # Prevent duplicates for the same user/store/date
+        UniqueConstraint('date', 'local_user_name', 'store_name', name='uix_sales_summary'),
+    )
 class Role(Base):
     __tablename__ = "roles"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -351,31 +380,4 @@ class Expense(Base):
     creator = relationship("User")
     branch = relationship("Branch")
 
-# --- SALES SUMMARY MODEL ---
-class SalesSummary(Base):
-    __tablename__ = "sales_summaries"
 
-    id = Column(Integer, primary_key=True, index=True)
-    date = Column(Date, index=True, nullable=False)
-    
-    # "Local User Name" (e.g. "ANISSA") sent from local DB
-    local_user_name = Column(String(255), nullable=False)
-    
-    # Store Identifier (e.g. "Ariana" or "Nabeul")
-    store_name = Column(String(50), nullable=False)
-
-    # Calculated Metrics
-    quantity_sold = Column(Integer, default=0) # Number of items (lines from detfact)
-    total_revenue = Column(Numeric(19, 4), default=0.0) # Total Sales Amount
-
-    # Link to Employee (if mapped)
-    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
-    employee = relationship("Employee", back_populates="sales_summaries")
-
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        # Prevent duplicates for the same user/store/date
-        UniqueConstraint('date', 'local_user_name', 'store_name', name='uix_sales_summary'),
-    )
