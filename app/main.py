@@ -29,7 +29,7 @@ from .auth import authenticate_user, hash_password, ACCESS_TOKEN_EXPIRE_MINUTES,
 from .models import (
     Role, PayType, AttendanceType, LeaveType, LoanStatus, LoanTermUnit, ScheduleStatus,
     RepaymentSource, User, Branch, Employee, Attendance, Leave, Deposit, Pay, Loan,
-    LoanSchedule, LoanRepayment, AuditLog, LoanInterestType # Added missing Enums like LoanInterestType
+    LoanSchedule, LoanRepayment, AuditLog, LoanInterestType, SalesSummary # Added SalesSummary
 )
 # Import Schemas needed in main.py
 from .schemas import RoleCreate, RoleUpdate, LoanCreate, RepaymentCreate
@@ -39,7 +39,7 @@ from .audit import latest, log
 # --- END FIX ---
 
 # Import Routers
-from .routers import users, branches, employees as employees_api, attendance as attendance_api, leaves as leaves_api, deposits as deposits_api
+from .routers import users, branches, employees as employees_api, attendance as attendance_api, leaves as leaves_api, deposits as deposits_api, sales
 from .routers import pay
 # --- MODIFIÉ : Importer les nouvelles dépendances ---
 from .deps import get_db, web_require_permission
@@ -128,6 +128,7 @@ from .routers import expenses, sync
 app.include_router(expenses.router)
 app.include_router(sync.router)
 app.include_router(pay.router)
+app.include_router(sales.router)
 # --- FIN NOUVEAU ---
 # --- 2. Static/Templates Setup ---
 BASE_DIR = os.path.dirname(__file__)
@@ -1543,15 +1544,32 @@ async def primes_page(
         .group_by(Deposit.employee_id)
     ).subquery()
 
+    # Subquery for sales stats
+    sub_sales = (
+        select(
+            SalesSummary.employee_id,
+            func.sum(SalesSummary.quantity_sold).label("total_qty"),
+            func.sum(SalesSummary.total_revenue).label("total_rev")
+        )
+        .where(
+            SalesSummary.employee_id.in_(employee_ids),
+            SalesSummary.date.between(parsed_start_date, parsed_end_date)
+        )
+        .group_by(SalesSummary.employee_id)
+    ).subquery()
+
     # 4. Join employees with their stats
     stmt = (
         select(
             Employee,
             func.coalesce(sub_absences.c.absence_count, 0).label("absences"),
-            func.coalesce(sub_avances.c.avance_total, Decimal(0)).label("avances") # Assurer le type Decimal
+            func.coalesce(sub_avances.c.avance_total, Decimal(0)).label("avances"), # Assurer le type Decimal
+            func.coalesce(sub_sales.c.total_qty, 0).label("sales_qty"),
+            func.coalesce(sub_sales.c.total_rev, Decimal(0)).label("sales_rev")
         )
         .outerjoin(sub_absences, Employee.id == sub_absences.c.employee_id)
         .outerjoin(sub_avances, Employee.id == sub_avances.c.employee_id)
+        .outerjoin(sub_sales, Employee.id == sub_sales.c.employee_id)
         .where(Employee.id.in_(employee_ids)) # Appliquer le filtre des employés visibles
     )
 
@@ -1559,9 +1577,12 @@ async def primes_page(
     
     # 5. Calculate score for each
     employee_stats_list = []
-    for emp, absences, avances in results:
-        # Score: 1000 - (100 * absences) - (0.5 * avances en TND)
-        # Vous pouvez ajuster cette formule
+    for emp, absences, avances, sales_qty, sales_rev in results:
+        # Score: 1000 - (100 * absences) - (0.5 * avances en TND) + (Sales bonus?)
+        # For now, sales data is just for visibility, not affecting score yet (unless user asked).
+        # User said "countity sells how many number and total what he sell" in primes page.
+        # User did NOT ask for score formula update yet, just display.
+        
         score = 1000.0
         score -= (float(absences) * 100.0) # 100 points par absence
         score -= (float(avances) * 0.5)   # 0.5 point par TND avancé
@@ -1574,6 +1595,8 @@ async def primes_page(
             "name": f"{emp.first_name} {emp.last_name}",
             "absences": int(absences),
             "avances": float(avances),
+            "sales_qty": int(sales_qty),
+            "sales_rev": float(sales_rev),
             "score": round(score)
         })
         

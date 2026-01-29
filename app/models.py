@@ -116,6 +116,7 @@ class Employee(Base):
 
     # --- AJOUT DE LA RELATION INVERSE ---
     loans = relationship("Loan", back_populates="employee")
+    sales_summaries = relationship("SalesSummary", back_populates="employee")
     # --- FIN ---
 
 
@@ -349,3 +350,32 @@ class Expense(Base):
     
     creator = relationship("User")
     branch = relationship("Branch")
+
+# --- SALES SUMMARY MODEL ---
+class SalesSummary(Base):
+    __tablename__ = "sales_summaries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(Date, index=True, nullable=False)
+    
+    # "Local User Name" (e.g. "ANISSA") sent from local DB
+    local_user_name = Column(String(255), nullable=False)
+    
+    # Store Identifier (e.g. "Ariana" or "Nabeul")
+    store_name = Column(String(50), nullable=False)
+
+    # Calculated Metrics
+    quantity_sold = Column(Integer, default=0) # Number of items (lines from detfact)
+    total_revenue = Column(Numeric(19, 4), default=0.0) # Total Sales Amount
+
+    # Link to Employee (if mapped)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    employee = relationship("Employee", back_populates="sales_summaries")
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        # Prevent duplicates for the same user/store/date
+        UniqueConstraint('date', 'local_user_name', 'store_name', name='uix_sales_summary'),
+    )

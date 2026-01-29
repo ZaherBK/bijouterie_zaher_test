@@ -311,3 +311,23 @@ class ExpenseOut(ExpenseBase):
     created_at: datetime
     creator: Optional[UserOut] = None
 # --- FIN DES NOUVEAUX SCHÉMAS ---
+
+# --- NOUVEAUX SCHÉMAS : Ventes (Sales) ---
+class SalesSummaryBase(BaseModel):
+    date: date
+    local_user_name: str
+    store_name: str
+    quantity_sold: int
+    total_revenue: Decimal
+    model_config = ConfigDict(from_attributes=True)
+
+class SalesSummaryCreate(SalesSummaryBase):
+    pass
+
+class SalesSummaryOut(SalesSummaryBase):
+    id: int
+    employee_id: Optional[int]
+    employee: Optional[EmployeeOut] = None
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+# --- FIN DE Ventes ---

@@ -23,8 +23,8 @@ import os
 
 # ===================== CONFIGURATION =====================
 CLOUD_API_URL = "https://hr-sync.onrender.com/"  # Your hosted website URL
-CLOUD_EMAIL = "issam@local.com"
-CLOUD_PASSWORD = "002"
+CLOUD_EMAIL = "zied@local.com"
+CLOUD_PASSWORD = "0"
 
 LOCAL_DB_HOST = "localhost"
 LOCAL_DB_USER = "root"
@@ -59,6 +59,94 @@ def login_to_cloud():
         return None
 
 
+def detect_local_db():
+    """Detect which store DB is available (Ariana/mah1303 or Nabeul/inv)."""
+    options = [
+        {"schema": "mah1303", "name": "Ariana", "pass": "6165"},
+        {"schema": "inv", "name": "Nabeul", "pass": "6165"},
+    ]
+    
+    for opt in options:
+        try:
+            conn = pymysql.connect(
+                host=LOCAL_DB_HOST,
+                user=LOCAL_DB_USER,
+                password=opt["pass"],
+                database=opt["schema"],
+                connect_timeout=2
+            )
+            conn.close()
+            print(f"[{datetime.now():%H:%M:%S}] [INFO] Detected Store: {opt['name']} (DB: {opt['schema']})")
+            return opt["schema"], opt["name"], opt["pass"]
+        except:
+            continue
+            
+    print(f"[{datetime.now():%H:%M:%S}] [WARN] No known database found. Defaulting to Schema: {LOCAL_DB_SCHEMA}")
+    return LOCAL_DB_SCHEMA, "Unknown", LOCAL_DB_PASSWORD
+
+
+def sync_sales_data(token, db_schema, db_pass, store_name):
+    """Calculate and Sync Daily Sales Performance."""
+    print(f"[{datetime.now():%H:%M:%S}] Checking Sales Data for {store_name}...")
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Sync TODAY and YESTERDAY (to catch late updates)
+    dates_to_sync = [date.today(), date.today() - timedelta(days=1)]
+    
+    try:
+        connection = pymysql.connect(
+            host=LOCAL_DB_HOST,
+            user=LOCAL_DB_USER,
+            password=db_pass,
+            database=db_schema,
+            cursorclass=pymysql.cursors.DictCursor,
+            charset='latin1'
+        )
+        
+        payload_list = []
+        
+        with connection.cursor() as cursor:
+            for d in dates_to_sync:
+                d_str = d.isoformat()
+                
+                # OPTIMIZED QUERY: Count Invoices (QTY) and Sum Revenue (REV) in one go
+                # "Quantity" = Number of Invoices (Factures) per user logic
+                sql = """
+                    SELECT UTILISATEUR, COUNT(*) as qty, SUM(TOTALPRIX) as rev 
+                    FROM facture 
+                    WHERE DATE(DEDATE) = %s 
+                    GROUP BY UTILISATEUR
+                """
+                cursor.execute(sql, (d_str,))
+                
+                for row in cursor.fetchall():
+                    u = row['UTILISATEUR']
+                    if not u: continue
+                    
+                    payload_list.append({
+                        "date": d_str,
+                        "local_user_name": u,
+                        "store_name": store_name,
+                        "quantity_sold": int(row['qty']), # Count of Factures
+                        "total_revenue": float(row['rev']) # Sum of TotalPrix
+                    })
+        
+        connection.close()
+        
+        if payload_list:
+            # Upload to Cloud
+            resp = requests.post(f"{CLOUD_API_URL}/api/sales/sync", json=payload_list, headers=headers, timeout=30)
+            if resp.status_code == 201:
+                print(f"[{datetime.now():%H:%M:%S}] [OK] Synced {len(payload_list)} sales records.")
+            else:
+                print(f"[{datetime.now():%H:%M:%S}] [ERROR] Sales Sync Failed: {resp.text}")
+        else:
+            print(f"[{datetime.now():%H:%M:%S}] No sales data found for last 48h.")
+
+    except Exception as e:
+        print(f"[{datetime.now():%H:%M:%S}] [ERROR] Sales Sync Error: {e}")
+
+
 def get_unsynced_data(token):
     """Fetch today's deposits and expenses from cloud API."""
     headers = {"Authorization": f"Bearer {token}"}
@@ -78,7 +166,7 @@ def get_unsynced_data(token):
             all_deposits = resp.json()
             # MODIFIED: Check last 30 days
             deposits = [d for d in all_deposits if d.get('date') and d.get('date') >= start_date_str]
-            print(f"[{datetime.now():%H:%M:%S}] Found {len(deposits)} deposits (last 30 days)")
+            # print(f"[{datetime.now():%H:%M:%S}] Found {len(deposits)} deposits (last 30 days)")
         else:
             print(f"[{datetime.now():%H:%M:%S}] [ERROR] Deposits API Error: {resp.status_code} {resp.text}")
     except Exception as e:
@@ -91,7 +179,7 @@ def get_unsynced_data(token):
             all_expenses = resp.json()
             # MODIFIED: Check last 30 days
             expenses = [e for e in all_expenses if e.get('date') and e.get('date') >= start_date_str]
-            print(f"[{datetime.now():%H:%M:%S}] Found {len(expenses)} expenses (last 30 days)")
+            # print(f"[{datetime.now():%H:%M:%S}] Found {len(expenses)} expenses (last 30 days)")
         else:
             print(f"[{datetime.now():%H:%M:%S}] [ERROR] Expenses API Error: {resp.status_code} {resp.text}")
     except Exception as e:
@@ -107,7 +195,7 @@ def get_unsynced_data(token):
             all_loans = resp.json()
             # MODIFIED: Check last 30 days (filter by start_date)
             loans = [l for l in all_loans if l.get('start_date') and l.get('start_date') >= start_date_str]
-            print(f"[{datetime.now():%H:%M:%S}] Found {len(loans)} loans (last 30 days)")
+            # print(f"[{datetime.now():%H:%M:%S}] Found {len(loans)} loans (last 30 days)")
         else:
             print(f"[{datetime.now():%H:%M:%S}] [ERROR] Loans API Error: {resp.status_code} {resp.text}")
     except Exception as e:
@@ -119,7 +207,7 @@ def get_unsynced_data(token):
 
 
 
-def sync_to_local_mysql(token, deposits, expenses, payments, loans):
+def sync_to_local_mysql(token, deposits, expenses, payments, loans, db_schema, db_pass):
     """Insert data into local MySQL fdepense table."""
     if not deposits and not expenses and not payments and not loans:
         print(f"[{datetime.now():%H:%M:%S}] Nothing to sync")
@@ -142,8 +230,8 @@ def sync_to_local_mysql(token, deposits, expenses, payments, loans):
         connection = pymysql.connect(
             host=LOCAL_DB_HOST,
             user=LOCAL_DB_USER,
-            password=LOCAL_DB_PASSWORD,
-            database=LOCAL_DB_SCHEMA,
+            password=db_pass,
+            database=db_schema,
             cursorclass=pymysql.cursors.DictCursor,
             connect_timeout=5,
             charset='latin1'  # Legacy MySQL 4.1 support
@@ -162,73 +250,100 @@ def sync_to_local_mysql(token, deposits, expenses, payments, loans):
             cursor.execute(query, tuple(involved_dates))
             
             # Key: (date_str, libelle, amount)
-            existing = set(
-                (str(row['DATDEP']), row['LIBDEP'], float(row['MONTANT'])) 
-                for row in cursor.fetchall()
-            )
-            
-            # Process Deposits (CODDEP = 2)
-            for d in deposits:
-                emp = d.get('employee') or {}
-                emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
-                note = d.get('note', '')
-                if note:
-                    lib_dep = f"{emp_name} - {note}"
+            existing = set()
+            for row in cursor.fetchall():
+                d_val = row['DATDEP']
+                # Normalize Date (Handle datetime/date/string)
+                if isinstance(d_val, datetime):
+                    d_str = d_val.date().isoformat()
+                elif isinstance(d_val, date):
+                    d_str = d_val.isoformat()
                 else:
-                    lib_dep = emp_name
+                    d_str = str(d_val)[:10] # Handle YYYY-MM-DD... string
                 
-                lib_dep = lib_dep[:45]
-                amount = float(d['amount'])
-                date_str = str(d['date'])
+                l_str = str(row['LIBDEP']) if row['LIBDEP'] else ''
+                try: m_val = float(row['MONTANT'])
+                except: m_val = 0.0
                 
-                if (date_str, lib_dep, amount) in existing: continue
-                
-                current_num_dep += 1
-                creator_name = (d.get('creator') or {}).get('full_name', SYNC_USER_NAME)[:20]
-                sql = """INSERT INTO fdepense 
-                         (TYPE, MODREG, BANQUE, NUMPCE, DATPCE, CODDEP, NUMDEP, MONTANT, LIBDEP, DATDEP, NUM, UTIL)
-                         VALUES (0, 'Espèces', '', '', %s, %s, %s, %s, %s, %s, 0, %s)"""
-                cursor.execute(sql, (d['date'], CODDEP_DEPOSITS, current_num_dep, amount, lib_dep, d['date'], creator_name))
-                inserted += 1
+                existing.add((d_str, l_str, m_val))
             
-            # Process Expenses (CODDEP = 1)
+            print(f"[{datetime.now():%H:%M:%S}] [DEBUG] Loaded {len(existing)} existing records. Sample: {list(existing)[0] if existing else 'None'}")
+
+            print(f"[{datetime.now():%H:%M:%S}] [DEBUG] Loaded {len(existing)} existing records. Sample: {list(existing)[0] if existing else 'None'}")
+
+            # 1. Collect all items into a unified list
+            all_items = []
+
+            # Add Deposits
+            for d in deposits:
+                all_items.append({'type': 'deposit', 'date': d['date'], 'data': d})
+            
+            # Add Expenses
             for e in expenses:
-                lib_dep = e.get('description', 'Dépense')[:45]
-                amount = float(e['amount'])
-                date_str = str(e['date'])
-                
-                if (date_str, lib_dep, amount) in existing: continue
-                
-                current_num_dep += 1
-                creator_name = (e.get('creator') or {}).get('full_name', SYNC_USER_NAME)[:20]
-                sql = """INSERT INTO fdepense 
-                         (TYPE, MODREG, BANQUE, NUMPCE, DATPCE, CODDEP, NUMDEP, MONTANT, LIBDEP, DATDEP, NUM, UTIL)
-                         VALUES (0, 'Espèces', '', '', %s, %s, %s, %s, %s, %s, 0, %s)"""
-                cursor.execute(sql, (e['date'], CODDEP_EXPENSES, current_num_dep, amount, lib_dep, e['date'], creator_name))
-                inserted += 1
-            
-            # Process Payments & Primes (SKIPPED)
-            # User request: "dont sync prime page".
-            
-            # Process Loans (CODDEP = 1)
+                all_items.append({'type': 'expense', 'date': e['date'], 'data': e})
+
+            # Add Loans
             for l in loans:
-                emp = l.get('employee') or {}
-                emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
-                note = l.get('notes', '') or 'Prêt'
+                all_items.append({'type': 'loan', 'date': l['start_date'], 'data': l})
+            
+            # 2. Sort ASCENDING by Date (Oldest to Newest)
+            # This ensures NUMDEP / IDs are assigned chronologically
+            all_items.sort(key=lambda x: x['date'])
+
+            print(f"[{datetime.now():%H:%M:%S}] [DEBUG] Processing {len(all_items)} items in chronological order...")
+
+            # 3. Iterate and Insert
+            for item in all_items:
+                data = item['data']
+                itype = item['type']
                 
-                lib_dep = f"{emp_name} - {note}"
+                # --- PREPARE DATA BASED ON TYPE ---
+                if itype == 'deposit':
+                    # Logic for Deposits (CODDEP=1 ?) Wait, previous code said CODDEP_DEPOSITS. 
+                    # Let's check constants: CODDEP_DEPOSITS = 1 (Avance), CODDEP_EXPENSES = 2 (Dépense)
+                    # (Note: In previous code snippets, user had CODDEP_DEPOSITS=1 and CODDEP_EXPENSES=2
+                    #  Check top of file: CODDEP_EXPENSES = 2, CODDEP_DEPOSITS = 1
+                    
+                    emp = data.get('employee') or {}
+                    emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+                    note = data.get('note', '')
+                    lib_dep = f"{emp_name} - {note}" if note else emp_name
+                    
+                    amount = float(data['amount'])
+                    coddep = CODDEP_DEPOSITS
+                
+                elif itype == 'expense':
+                    lib_dep = data.get('description', 'Dépense')
+                    amount = float(data['amount'])
+                    coddep = CODDEP_EXPENSES
+                
+                elif itype == 'loan':
+                    emp = data.get('employee') or {}
+                    emp_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+                    note = data.get('notes', '') or 'Prêt'
+                    lib_dep = f"{emp_name} - {note}"
+                    
+                    amount = float(data['principal'])
+                    coddep = CODDEP_DEPOSITS # Loans treated as Avance? YES, per previous code (line 208 was CODDEP_DEPOSITS)
+
+                # --- COMMON INSERTION LOGIC ---
                 lib_dep = lib_dep[:45]
-                amount = float(l['principal'])
-                date_str = str(l['start_date'])
+                date_str = str(item['date'])
                 
-                if (date_str, lib_dep, amount) in existing: continue
+                # Check Duplicates
+                if (date_str, lib_dep, amount) in existing:
+                    print(f"  [SKIP] Exists: {date_str} | {amount} | {lib_dep}")
+                    continue
                 
+                # Insert
+                print(f"  [INSERT] Inserting: {date_str} | {amount} | {lib_dep}")
                 current_num_dep += 1
-                creator_name = (l.get('creator') or {}).get('full_name', SYNC_USER_NAME)[:20]
+                creator_name = (data.get('creator') or {}).get('full_name', SYNC_USER_NAME)[:20]
+                
                 sql = """INSERT INTO fdepense 
                          (TYPE, MODREG, BANQUE, NUMPCE, DATPCE, CODDEP, NUMDEP, MONTANT, LIBDEP, DATDEP, NUM, UTIL)
                          VALUES (0, 'Espèces', '', '', %s, %s, %s, %s, %s, %s, 0, %s)"""
-                cursor.execute(sql, (l['start_date'], CODDEP_DEPOSITS, current_num_dep, amount, lib_dep, l['start_date'], creator_name))
+                cursor.execute(sql, (date_str, coddep, current_num_dep, amount, lib_dep, date_str, creator_name))
                 inserted += 1
 
             connection.commit()
@@ -252,18 +367,27 @@ def sync_to_local_mysql(token, deposits, expenses, payments, loans):
             connection.close()
 
 
+
+
 def run_sync():
     """Run one sync cycle."""
     print(f"\n{'='*50}")
     print(f"[{datetime.now():%H:%M:%S}] Starting sync cycle...")
     
+    # 1. Detect Store/DB
+    db_schema, store_name, db_pass = detect_local_db()
+    
     token = login_to_cloud()
     if not token:
         return
     
+    # 2. Sync Syncable Data (Deposits/Expenses) -> Local DB
     deposits, expenses, payments, loans = get_unsynced_data(token)
-    # Pass token to sync function so it can use it for backup
-    sync_to_local_mysql(token, deposits, expenses, payments, loans)
+    sync_to_local_mysql(token, deposits, expenses, payments, loans, db_schema, db_pass)
+    
+    # 3. Sync Sales Data (Local DB -> Cloud)
+    sync_sales_data(token, db_schema, db_pass, store_name)
+
 
 
 
