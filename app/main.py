@@ -1191,6 +1191,7 @@ async def employee_report_index(
     summary_active_leaves = []
     summary_has_loan = False
     summary_primes = 0 # <-- NOUVEAU: Ajout de la variable pour les primes
+    period_label = "Résumé"
     # --- End defaults ---
 
     if employee_id:
