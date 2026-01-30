@@ -37,7 +37,7 @@
   <h3>Détails pour : <strong>{{ selected_employee.first_name }} {{ selected_employee.last_name }}</strong></h3>
 
   <div class="summary-box">
-    <h4 class="summary-title">Résumé du Mois Actuel</h4>
+    <h4 class="summary-title">{{ period_label }}</h4>
     <ul class="summary-list">
 
       <!-- Primes (ADD THIS) -->
@@ -400,7 +400,8 @@
         <div class="modal-body">
           <p>Êtes-vous sûr de vouloir supprimer l'avance de <strong>{{ "%.2f TND"|format(d.amount|float) }}</strong> du
             <strong>{{ d.date.strftime('%Y-%m-%d') }}</strong> pour <strong>{{ selected_employee.first_name }} {{
-              selected_employee.last_name }}</strong> ?</p>
+              selected_employee.last_name }}</strong> ?
+          </p>
           <p class="text-danger">Cette action est irréversible.</p>
         </div>
         <div class="modal-footer form-actions"><button type="button" class="btn btn-secondary"
@@ -428,7 +429,8 @@
         </div>
         <div class="modal-body">
           <p>Êtes-vous sûr de vouloir supprimer l'absence du <strong>{{ a.date.strftime('%Y-%m-%d') }}</strong> pour
-            <strong>{{ selected_employee.first_name }} {{ selected_employee.last_name }}</strong> ?</p>
+            <strong>{{ selected_employee.first_name }} {{ selected_employee.last_name }}</strong> ?
+          </p>
           <p class="text-danger">Cette action est irréversible.</p>
         </div>
         <div class="modal-footer form-actions"><button type="button" class="btn btn-secondary"

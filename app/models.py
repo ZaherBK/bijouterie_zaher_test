@@ -134,6 +134,7 @@ class Employee(Base):
     branch_id: Mapped[int] = mapped_column(ForeignKey("branches.id"))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     salary: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    salary_frequency: Mapped[SalaryFrequency] = mapped_column(Enum(SalaryFrequency), default=SalaryFrequency.monthly)
     has_cnss: Mapped[bool] = mapped_column(Boolean, default=False) # Checkbox CNSS
 
     # Relations
@@ -147,6 +148,10 @@ class Employee(Base):
     loans = relationship("Loan", back_populates="employee")
     sales_summaries = relationship("SalesSummary", back_populates="employee")
     # --- FIN ---
+
+class SalaryFrequency(str, enum.Enum):
+    monthly = "monthly"
+    weekly = "weekly"
 
 
 class AttendanceType(str, enum.Enum):

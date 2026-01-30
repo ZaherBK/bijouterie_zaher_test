@@ -8,8 +8,8 @@ from decimal import Decimal
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 
 # Importer les Enums depuis models.py, y compris PayType
-# --- MODIFIÉ : Role n'est plus un Enum ---
-from .models import AttendanceType, LeaveType, PayType, LoanInterestType, LoanTermUnit, LoanStatus
+# --- MODIFIÉ : Role n'est plus un Enum, SalaryFrequency Ajouté ---
+from .models import AttendanceType, LeaveType, PayType, LoanInterestType, LoanTermUnit, LoanStatus, SalaryFrequency
 # --- FIN MODIFIÉ ---
 
 
@@ -109,6 +109,7 @@ class EmployeeBase(BaseModel):
     
     # --- NOUVEAU CHAMP : Salaire ---
     salary: Optional[Decimal] = Field(None, gt=0, max_digits=10, decimal_places=2)
+    salary_frequency: SalaryFrequency = SalaryFrequency.monthly
 
     @field_validator('cin')
     def validate_cin(cls, v):

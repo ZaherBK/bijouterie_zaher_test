@@ -115,7 +115,33 @@ async def fix_migration_manual(db: AsyncSession = Depends(get_db)):
     except Exception as e:
         return {"status": "error", "message": f"Global error: {str(e)}"}
 
-# --- 1. API Routers ---
+@app.get("/fix-salary-column")
+async def fix_salary_column(db: AsyncSession = Depends(get_db)):
+    """Migration manuelle pour ajouter la colonne salary_frequency."""
+    messages = []
+    try:
+        # 1. Add Column salary_frequency (ENUM or VARCHAR)
+        # PostgreSQL syntax
+        try:
+            # Check if type exists first (for Enum)
+            # But simpler to just use VARCHAR for safety or let SQL Alchemy handle it? 
+            # No, raw SQL is safer for migration.
+            # We'll use VARCHAR(50) to store 'monthly'/'weekly' to avoid Enum complications in raw SQL.
+            # OR we can try to create the TYPE.
+            
+            # Let's try adding column as VARCHAR first, or TEXT check constraint.
+            # Actually, let's just use Text/Varchar and let SQLAlchemy cast it later, 
+            # or try to create the enum type.
+            
+            await db.execute(text("ALTER TABLE employees ADD COLUMN IF NOT EXISTS salary_frequency VARCHAR(50) DEFAULT 'monthly'"))
+            await db.commit()
+            messages.append("Colone 'salary_frequency' ajoutée.")
+        except Exception as e:
+            messages.append(f"Erreur ajout colonne: {e}")
+
+        return {"status": "success", "messages": messages}
+    except Exception as e:
+        return {"status": "error", "message": f"Global error: {str(e)}"}
 app.include_router(users.router)
 app.include_router(branches.router)
 app.include_router(employees_api.router)
@@ -1196,45 +1222,72 @@ async def employee_report_index(
                 loans = res_loans.scalars().all()
                 # === FIN DU FIX ===
 
-                # ===== START: New Summary Logic =====
+                # ===== START: New Summary Logic (Weekly/Monthly) =====
                 today = datetime.now(TUNISIA_TZ)
                 
-                # 1. Monthly Advances (using Deposit model as per 'avances' tab)
-                res_monthly_advances = await db.execute(
+                # Determine Period based on Salary Frequency
+                # Default to monthly if not set
+                freq = selected_employee.salary_frequency # Enum
+                
+                period_label = "Résumé du Mois Actuel"
+                period_start = today.date().replace(day=1)
+                # End of month approximation (for query usually just >= start is enough if we filter by current month, 
+                # but strict range is better).
+                # Simple way to get end of month:
+                next_month = today.date().replace(day=28) + timedelta(days=4)
+                period_end = next_month - timedelta(days=next_month.day)
+
+                if freq == SalaryFrequency.weekly:
+                    period_label = "Résumé de la Semaine Actuelle"
+                    # Monday = 0, Sunday = 6
+                    # We want Mon to Sun ? Or user specific ? Usually Mon-Sun in Tunisia business or Sat-Fri?
+                    # Let's assume Mon-Sun for ISO standard, or ask user?
+                    # "Standard" is usually Mon-Sun.
+                    # today.weekday() returns 0 for Mon, 6 for Sun.
+                    start_of_week = today.date() - timedelta(days=today.weekday())
+                    end_of_week = start_of_week + timedelta(days=6)
+                    period_start = start_of_week
+                    period_end = end_of_week
+                
+                # 1. Advances (Deposits) in Period
+                res_period_advances = await db.execute(
                     select(models.Deposit).where(
                         models.Deposit.employee_id == employee_id,
-                        extract("month", models.Deposit.date) == today.month,
-                        extract("year", models.Deposit.date) == today.year
+                        models.Deposit.date >= period_start,
+                        models.Deposit.date <= period_end
                     )
                 )
-                monthly_advances_list = res_monthly_advances.scalars().all()
-                summary_advances = sum(d.amount for d in monthly_advances_list)
+                period_advances_list = res_period_advances.scalars().all()
+                summary_advances = sum(d.amount for d in period_advances_list)
 
-                # 2. Monthly Absences (using Attendance model)
-                res_monthly_absences = await db.execute(
+                # 2. Absences in Period
+                res_period_absences = await db.execute(
                     select(models.Attendance).where(
                         models.Attendance.employee_id == employee_id,
                         models.Attendance.atype == AttendanceType.absent,
-                        extract("month", models.Attendance.date) == today.month,
-                        extract("year", models.Attendance.date) == today.year
+                        models.Attendance.date >= period_start,
+                        models.Attendance.date <= period_end
                     )
                 )
-                summary_absences = len(res_monthly_absences.scalars().all())
+                summary_absences = len(res_period_absences.scalars().all())
 
-                # 3. Check for salary payment this month (using Pay model)
-                res_monthly_salary = await db.execute(
+                # 3. Salary Payment in Period
+                # We check if a "Main" salary payment (mensuel OR hebdomadaire) exists in this period
+                # Adjust PayType check based on frequency? 
+                # Actually, simply check if ANY "Salary" type payment occurred.
+                target_pay_type = PayType.mensuel if freq == 'monthly' else PayType.hebdomadaire
+                
+                res_period_salary = await db.execute(
                     select(models.Pay).where(
                         models.Pay.employee_id == employee_id,
-                        models.Pay.pay_type == PayType.mensuel, # Assuming 'mensuel' is salary
-                        extract("month", models.Pay.date) == today.month,
-                        extract("year", models.Pay.date) == today.year
+                        models.Pay.pay_type == target_pay_type, 
+                        models.Pay.date >= period_start,
+                        models.Pay.date <= period_end
                     )
                 )
-                # --- FIX for MultipleResultsFound ---
-                monthly_salary_payments_list = res_monthly_salary.scalars().all()
-                summary_is_paid = len(monthly_salary_payments_list) > 0
-                summary_paid_amount = sum(p.amount for p in monthly_salary_payments_list) if summary_is_paid else 0
-                # --- END FIX ---
+                period_salary_payments_list = res_period_salary.scalars().all()
+                summary_is_paid = len(period_salary_payments_list) > 0
+                summary_paid_amount = sum(p.amount for p in period_salary_payments_list) if summary_is_paid else 0
 
                 # 4. Check for active or upcoming leaves (uses 'leaves' list)
                 summary_active_leaves = [l for l in leaves if l.end_date >= today.date()]
@@ -1246,23 +1299,23 @@ async def employee_report_index(
                 ]
                 summary_has_loan = len(summary_active_loans_list) > 0
                 
-                # --- NOUVEAU: 6. Calculer les primes du mois ---
-                res_monthly_primes = await db.execute(
+                # 6. Primes int Period
+                res_period_primes = await db.execute(
                     select(models.Pay).where(
                         models.Pay.employee_id == employee_id,
                         models.Pay.pay_type == PayType.prime_rendement,
-                        extract("month", models.Pay.date) == today.month,
-                        extract("year", models.Pay.date) == today.year
+                        models.Pay.date >= period_start,
+                        models.Pay.date <= period_end
                     )
                 )
-                monthly_primes_list = res_monthly_primes.scalars().all()
-                summary_primes = sum(p.amount for p in monthly_primes_list)
-                # --- FIN NOUVEAU ---
+                period_primes_list = res_period_primes.scalars().all()
+                summary_primes = sum(p.amount for p in period_primes_list)
                 
                 # ===== END: New Summary Logic =====
 
         else:
             employee_id = None # Ne pas montrer les données si pas autorisé
+            period_label = "Résumé" # Fallback
 
     context = {
         "request": request, "user": user, "app_name": APP_NAME,
@@ -1278,7 +1331,8 @@ async def employee_report_index(
         "summary_paid_amount": summary_paid_amount,
         "summary_active_leaves": summary_active_leaves,
         "summary_has_loan": summary_has_loan,
-        "summary_primes": summary_primes # <-- NOUVEAU: Ajout de la variable au contexte
+        "summary_primes": summary_primes,
+        "period_label": period_label # <-- DYNAMIC LABEL
     }
     return templates.TemplateResponse("employee_report.html", context)
 

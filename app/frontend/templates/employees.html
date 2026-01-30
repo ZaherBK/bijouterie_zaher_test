@@ -53,6 +53,13 @@
           title="Montant positif, ex: 1200 ou 1200.50">
       </div>
       <div class="form-group">
+        <label for="salary_frequency">Fréquence de Paiement</label>
+        <select id="salary_frequency" name="salary_frequency" class="form-select">
+          <option value="monthly" selected>Mensuel</option>
+          <option value="weekly">Hebdomadaire</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label for="branch_id">Magasin</label>
         {% if (not user.permissions.is_admin) and manager_branch_id %}
         <input type="hidden" name="branch_id" value="{{ manager_branch_id }}">
@@ -147,6 +154,7 @@
               data-bs-target="#editEmployeeModal" data-id="{{ e.id }}" data-firstname="{{ e.first_name }}"
               data-lastname="{{ e.last_name }}" data-cin="{{ e.cin or '' }}" data-position="{{ e.position }}"
               data-salary="{{ '%.2f'|format(e.salary|float) if e.salary else '' }}" data-branch="{{ e.branch_id }}"
+              data-frequency="{{ e.salary_frequency.value if e.salary_frequency else 'monthly' }}"
               data-cnss="{{ 'true' if e.has_cnss else 'false' }}">
               <i class="fa-solid fa-pen"></i> Modifier
             </button>
@@ -202,6 +210,13 @@
             <div class="form-group">
               <label>Salaire (TND)</label>
               <input type="text" id="edit_salary" name="salary" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Fréquence</label>
+              <select id="edit_salary_frequency" name="salary_frequency" class="form-select">
+                <option value="monthly">Mensuel</option>
+                <option value="weekly">Hebdomadaire</option>
+              </select>
             </div>
             <div class="form-group">
               <label>Magasin</label>
@@ -262,6 +277,12 @@
       document.getElementById('edit_cin').value = cin;
       document.getElementById('edit_position').value = position;
       document.getElementById('edit_salary').value = salary;
+
+      const freqSelect = document.getElementById('edit_salary_frequency');
+      if (freqSelect) {
+        const freq = button.getAttribute('data-frequency') || 'monthly';
+        freqSelect.value = freq;
+      }
 
       // Update Checkbox
       document.getElementById('edit_has_cnss').checked = cnss;
