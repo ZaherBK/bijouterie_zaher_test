@@ -18,7 +18,17 @@ async def fix_database():
         # specific fix: ensure metadata knows about everything
         await conn.run_sync(Base.metadata.create_all)
         
-    print("Done! Tables created.")
+        # --- FIX: Manually Add Missing Column ---
+        from sqlalchemy import text
+        print("Migrating Employee Table: Adding salary_frequency column...")
+        try:
+            await conn.execute(text("ALTER TABLE employees ADD COLUMN IF NOT EXISTS salary_frequency VARCHAR(50) DEFAULT 'monthly'"))
+            print("Column 'salary_frequency' added successfully.")
+        except Exception as e:
+            print(f"Skipping column addition (might exist or error): {e}")
+        # --- END FIX ---
+        
+    print("Done! Tables created and migrated.")
     await engine.dispose()
 
 if __name__ == "__main__":

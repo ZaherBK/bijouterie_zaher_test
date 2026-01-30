@@ -1204,6 +1204,17 @@ async def employee_report_index(
                      employee_visible = True
                      break
 
+        # --- Initialize default values for summary variables ---
+        summary_advances = 0
+        summary_absences = 0
+        summary_is_paid = False
+        summary_paid_amount = 0
+        summary_active_leaves = []
+        summary_has_loan = False
+        summary_primes = 0
+        period_label = "Résumé"
+        # -------------------------------------------------------
+
         if employee_visible:
             res_selected = await db.execute(select(Employee).where(Employee.id == employee_id))
             selected_employee = res_selected.scalar_one_or_none()
