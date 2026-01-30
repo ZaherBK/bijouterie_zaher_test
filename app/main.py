@@ -597,7 +597,8 @@ async def employees_update(
     branch_id: Annotated[int | None, Form()] = None,
     cin: Annotated[str, Form()] = None,
     salary: Annotated[Decimal, Form()] = None,
-    has_cnss: bool = Form(False)
+    has_cnss: bool = Form(False),
+    salary_frequency: Annotated[SalaryFrequency, Form()] = SalaryFrequency.monthly # <-- NOUVEAU
 ):
     # Fetch Employee
     res_emp = await db.execute(select(Employee).where(Employee.id == employee_id))
@@ -625,6 +626,7 @@ async def employees_update(
     employee.salary = salary
     employee.branch_id = branch_id
     employee.has_cnss = has_cnss
+    employee.salary_frequency = salary_frequency # <-- UPDATE
 
     await db.commit()
     await db.refresh(employee)
