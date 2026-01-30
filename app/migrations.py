@@ -21,5 +21,13 @@ async def run_migrations():
                 await conn.execute(text("ALTER TABLE expenses ADD COLUMN branch_id INTEGER REFERENCES branches(id)"))
                 logger.info("Migration successful: branch_id added to expenses.")
 
+            # --- EMPLOYEES MIGRATION ---
+            try:
+                await conn.execute(text("SELECT salary_frequency FROM employees LIMIT 1"))
+            except Exception:
+                logger.info("Migrating: Adding salary_frequency to employees table...")
+                await conn.execute(text("ALTER TABLE employees ADD COLUMN salary_frequency VARCHAR(50) DEFAULT 'monthly'"))
+                logger.info("Migration successful: salary_frequency added to employees.")
+
         except Exception as e:
             logger.error(f"Migration check failed: {e}")
