@@ -124,6 +124,11 @@ class Branch(Base):  # Magasin
     employees = relationship("Employee", back_populates="branch")
 
 
+class SalaryFrequency(str, enum.Enum):
+    monthly = "monthly"
+    weekly = "weekly"
+
+
 class Employee(Base):
     __tablename__ = "employees"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -149,9 +154,6 @@ class Employee(Base):
     sales_summaries = relationship("SalesSummary", back_populates="employee")
     # --- FIN ---
 
-class SalaryFrequency(str, enum.Enum):
-    monthly = "monthly"
-    weekly = "weekly"
 
 
 class AttendanceType(str, enum.Enum):
