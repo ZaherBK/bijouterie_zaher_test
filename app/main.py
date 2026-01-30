@@ -1545,18 +1545,33 @@ async def primes_page(
     ).subquery()
 
     # Subquery for sales stats
-    sub_sales = (
-        select(
-            SalesSummary.employee_id,
-            func.sum(SalesSummary.quantity_sold).label("total_qty"),
-            func.sum(SalesSummary.total_revenue).label("total_rev")
-        )
-        .where(
-            SalesSummary.employee_id.in_(employee_ids),
-            SalesSummary.date.between(parsed_start_date, parsed_end_date)
-        )
-        .group_by(SalesSummary.employee_id)
-    ).subquery()
+    sales_query = select(
+        SalesSummary.employee_id,
+        func.sum(SalesSummary.quantity_sold).label("total_qty"),
+        func.sum(SalesSummary.total_revenue).label("total_rev")
+    ).where(
+        SalesSummary.employee_id.in_(employee_ids),
+        SalesSummary.date.between(parsed_start_date, parsed_end_date)
+    )
+
+    # --- FILTER BY STORE NAME IF BRANCH SELECTED ---
+    # The user wants "separate" sales per store.
+    # If a branch is selected, filter SalesSummary by store_name which typically matches Branch.name
+    filter_store_name = None
+    if selected_branch_id and str(selected_branch_id).lower() != "all":
+        try:
+            bid = int(selected_branch_id)
+            # Find branch name from the loaded branches list (optimized)
+            found_branch = next((b for b in branches if b.id == bid), None)
+            if found_branch:
+                filter_store_name = found_branch.name
+        except ValueError:
+            pass
+
+    if filter_store_name:
+        sales_query = sales_query.where(SalesSummary.store_name == filter_store_name)
+    
+    sub_sales = sales_query.group_by(SalesSummary.employee_id).subquery()
 
     # 4. Join employees with their stats
     stmt = (
