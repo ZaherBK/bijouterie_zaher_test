@@ -29,7 +29,7 @@ from .auth import authenticate_user, hash_password, ACCESS_TOKEN_EXPIRE_MINUTES,
 from .models import (
     Role, PayType, AttendanceType, LeaveType, LoanStatus, LoanTermUnit, ScheduleStatus,
     RepaymentSource, User, Branch, Employee, Attendance, Leave, Deposit, Pay, Loan,
-    LoanSchedule, LoanRepayment, AuditLog, LoanInterestType, SalesSummary # Added SalesSummary
+    LoanSchedule, LoanRepayment, AuditLog, LoanInterestType, SalesSummary, SalaryFrequency # Added SalesSummary and SalaryFrequency
 )
 # Import Schemas needed in main.py
 from .schemas import RoleCreate, RoleUpdate, LoanCreate, RepaymentCreate
