@@ -8,8 +8,9 @@ from ..db import get_db
 from ..models import SalesSummary, Employee, User
 from ..schemas import SalesSummaryCreate, SalesSummaryOut
 
+
 router = APIRouter(
-    prefix="/sales",
+    prefix="/api/sales",
     tags=["sales"],
     responses={404: {"description": "Not found"}},
 )
