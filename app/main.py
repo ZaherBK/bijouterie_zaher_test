@@ -545,7 +545,8 @@ async def employees_create(
     branch_id: Annotated[int | None, Form()] = None, # Make optional, fill later if missing
     cin: Annotated[str, Form()] = None,
     salary: Annotated[Decimal, Form()] = None,
-    has_cnss: bool = Form(False)
+    has_cnss: bool = Form(False),
+    salary_frequency: Annotated[SalaryFrequency, Form()] = SalaryFrequency.monthly
 ):
     permissions = user.get("permissions", {})
     
@@ -571,7 +572,7 @@ async def employees_create(
     new_employee = Employee(
         first_name=first_name, last_name=last_name, cin=cin or None,
         position=position, branch_id=branch_id, salary=salary, active=True,
-        has_cnss=has_cnss
+        has_cnss=has_cnss, salary_frequency=salary_frequency
     )
     db.add(new_employee)
     await db.commit()
@@ -583,7 +584,6 @@ async def employees_create(
     )
 
     return RedirectResponse(request.url_for('employees_page'), status_code=status.HTTP_302_FOUND)
-
 
 @app.post("/employees/{employee_id}/update", name="employees_update")
 async def employees_update(
@@ -598,7 +598,7 @@ async def employees_update(
     cin: Annotated[str, Form()] = None,
     salary: Annotated[Decimal, Form()] = None,
     has_cnss: bool = Form(False),
-    salary_frequency: Annotated[SalaryFrequency, Form()] = SalaryFrequency.monthly # <-- NOUVEAU
+    salary_frequency: Annotated[SalaryFrequency, Form()] = SalaryFrequency.monthly
 ):
     # Fetch Employee
     res_emp = await db.execute(select(Employee).where(Employee.id == employee_id))
