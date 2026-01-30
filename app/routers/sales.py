@@ -15,11 +15,14 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
 @router.post("/sync", status_code=status.HTTP_201_CREATED)
-def sync_sales_summary(
+async def sync_sales_summary(
     summaries: List[SalesSummaryCreate],
-    db: Session = Depends(get_db),
-    # token: str = Depends(oauth2_scheme) # Secured by API Key later? For now open or Basic Auth if needed. User has Token.
+    db: AsyncSession = Depends(get_db),
+    # token: str = Depends(oauth2_scheme) 
 ):
     """
     Receive Daily Sales Summaries from Local Agent.
@@ -28,21 +31,22 @@ def sync_sales_summary(
     
     for item in summaries:
         # 1. Try to find Employee Mapping (First Name Match)
-        # We assume local_user_name is "First Name" (e.g. "ANISSA")
-        # Cloud First Name might be "Anissa".
-        
-        employee = db.query(Employee).filter(
+        stmt = select(Employee).where(
             func.lower(Employee.first_name) == item.local_user_name.lower().strip()
-        ).first()
+        )
+        result = await db.execute(stmt)
+        employee = result.scalar_one_or_none()
         
         emp_id = employee.id if employee else None
         
         # 2. Check if record exists (Upsert)
-        existing = db.query(SalesSummary).filter(
+        stmt_exist = select(SalesSummary).where(
             SalesSummary.date == item.date,
             SalesSummary.local_user_name == item.local_user_name,
             SalesSummary.store_name == item.store_name
-        ).first()
+        )
+        result_exist = await db.execute(stmt_exist)
+        existing = result_exist.scalar_one_or_none()
         
         if existing:
             # Update
@@ -63,16 +67,18 @@ def sync_sales_summary(
             
         synced_count += 1
     
-    db.commit()
+    await db.commit()
     return {"message": f"Synced {synced_count} sales records"}
 
 @router.get("/", response_model=List[SalesSummaryOut])
-def get_sales(
+async def get_sales(
     start_date: date,
     end_date: date,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
-    return db.query(SalesSummary).filter(
+    stmt = select(SalesSummary).where(
         SalesSummary.date >= start_date,
         SalesSummary.date <= end_date
-    ).all()
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
