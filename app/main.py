@@ -1583,9 +1583,19 @@ async def primes_page(
         # User said "countity sells how many number and total what he sell" in primes page.
         # User did NOT ask for score formula update yet, just display.
         
+        if not sales_qty: sales_qty = 0
+        if not sales_rev: sales_rev = 0.0
+
+        # Score Formula:
+        # Base: 1000
+        # - Absences: 50 points each
+        # + Sales (Qty): 2 points per item (invoice)
+        # + Sales (Rev): 1 point per 100 TND (0.01 * Rev)
+        
         score = 1000.0
-        score -= (float(absences) * 100.0) # 100 points par absence
-        score -= (float(avances) * 0.5)   # 0.5 point par TND avancé
+        score -= (float(absences) * 50.0)
+        score += (float(sales_qty) * 2.0)
+        score += (float(sales_rev) * 0.01)
         
         if score < 0:
             score = 0

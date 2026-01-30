@@ -150,7 +150,9 @@ def sync_sales_data(token, db_schema, db_pass, store_name, full_history=False):
                 if not u or not d_val: continue
                 
                 # Normalize Date
-                if isinstance(d_val, datetime): d_str = d_val.date().isoformat()
+                if isinstance(d_val, bytes): d_str = d_val.decode('utf-8')[:10]
+                elif isinstance(d_val, str): d_str = str(d_val)[:10]
+                elif isinstance(d_val, datetime): d_str = d_val.date().isoformat()
                 elif isinstance(d_val, date): d_str = d_val.isoformat()
                 else: d_str = str(d_val)[:10]
 
