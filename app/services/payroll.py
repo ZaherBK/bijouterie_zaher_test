@@ -137,18 +137,40 @@ class PayrollService:
             emp_absences = abs_map[emp.id]
             abs_count = len(emp_absences)
             
+            # --- Leaves (calc unpaid days) ---
+            emp_leaves = leave_map[emp.id]
+            unpaid_leave_days = 0
+            for l in emp_leaves:
+                if l.ltype.value == 'unpaid':
+                    # Calculate DURATION excluding SUNDAYS (6/7 Work Week)
+                    # We iterate through days to verify specific off-days
+                    curr = l.start_date
+                    while curr <= l.end_date:
+                        # 0=Mon, 6=Sun. Skip Sunday.
+                        if curr.weekday() != 6: 
+                            unpaid_leave_days += 1
+                        curr += timedelta(days=1)
+            
+            # --- Deduction ---
+            # Deduction covers Absences (AttendanceType.absent) AND Unpaid Leaves
+            total_deduction_days = abs_count + unpaid_leave_days
+            
+            # Assuming 26 working days for monthly deduction
+            daily_rate = salary / Decimal(26) if salary > 0 else Decimal(0)
+            deduction = daily_rate * Decimal(total_deduction_days)
+            
             # --- Advances ---
             emp_advances = adv_map[emp.id]
             total_advances = sum((a.amount for a in emp_advances), Decimal(0))
-            
-            # --- Leaves ---
-            emp_leaves = leave_map[emp.id]
             
             # --- Loans ---
             loans_due = loan_due_map.get(emp.id, Decimal(0))
             
             # --- Sales ---
             sales_data = sales_map.get(emp.id, {"qty": 0, "rev": 0})
+            
+            # --- Net ---
+            net_estimated = salary - deduction - total_advances - loans_due
             
             results.append({
                 "employee": emp,
@@ -161,10 +183,16 @@ class PayrollService:
                     
                     # Summaries
                     "absences_count": abs_count,
+                    "unpaid_leave_days": unpaid_leave_days,
+                    "total_deduction_days": total_deduction_days,
+                    "deduction_amount": deduction,
+                    
                     "advances_total": total_advances,
                     "loans_due_total": loans_due,
                     "sales_qty": sales_data["qty"],
-                    "sales_rev": sales_data["rev"]
+                    "sales_rev": sales_data["rev"],
+                    
+                    "net_estimated": net_estimated
                 }
             })
             
