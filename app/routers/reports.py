@@ -138,13 +138,18 @@ async def export_payroll(
         row_num += 1
 
     # Adjust Column Widths
-    ws.column_dimensions['A'].width = 15
-    ws.column_dimensions['B'].width = 25
-    ws.column_dimensions['G'].width = 15 # Abs Detail
-    ws.column_dimensions['I'].width = 25 # Leaves Detail
-    ws.column_dimensions['L'].width = 15 # Av Total
-    ws.column_dimensions['Q'].width = 18 # Net
-    ws.column_dimensions['R'].width = 20 # Sig
+    ws.column_dimensions['A'].width = 15 # Store
+    ws.column_dimensions['B'].width = 25 # Employee
+    ws.column_dimensions['C'].width = 15 # CIN
+    ws.column_dimensions['E'].width = 18 # Salary (Numeric)
+    ws.column_dimensions['G'].width = 20 # Abs Detail
+    ws.column_dimensions['I'].width = 30 # Leaves Detail
+    ws.column_dimensions['K'].width = 18 # Deduction Amount (Numeric)
+    ws.column_dimensions['L'].width = 18 # Av Total (Numeric)
+    ws.column_dimensions['N'].width = 18 # Loan Due (Numeric)
+    ws.column_dimensions['P'].width = 18 # Sales Rev (Numeric)
+    ws.column_dimensions['Q'].width = 22 # Net (Numeric) - Widest
+    ws.column_dimensions['R'].width = 25 # Notes
 
     # 3. Save to Stream
     output = BytesIO()
