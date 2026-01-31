@@ -9,30 +9,24 @@ async def run_migrations():
     logger.info("Checking for database migrations...")
     async with engine.begin() as conn:
         try:
-            # Check if 'branch_id' exists in 'expenses'
-            # Note: PRAGMA table_info is SQLite specific. For MySQL we might need different logic.
-            # But since we use SQLAlchemy text(), we can try a SELECT limit 0.
-            
             # --- EXPENSES MIGRATION ---
-            try:
-                await conn.execute(text("SELECT branch_id FROM expenses LIMIT 1"))
-            except Exception:
+            # Check if 'branch_id' column exists safely
+            result = await conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='expenses' AND column_name='branch_id'"))
+            if not result.scalar():
                 logger.info("Migrating: Adding branch_id to expenses table...")
                 await conn.execute(text("ALTER TABLE expenses ADD COLUMN branch_id INTEGER REFERENCES branches(id)"))
                 logger.info("Migration successful: branch_id added to expenses.")
 
-            # --- EMPLOYEES MIGRATION ---
-            try:
-                await conn.execute(text("SELECT salary_frequency FROM employees LIMIT 1"))
-            except Exception:
+            # --- EMPLOYEES MIGRATION (Salary Frequency) ---
+            result = await conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='employees' AND column_name='salary_frequency'"))
+            if not result.scalar():
                 logger.info("Migrating: Adding salary_frequency to employees table...")
                 await conn.execute(text("ALTER TABLE employees ADD COLUMN salary_frequency VARCHAR(50) DEFAULT 'monthly'"))
                 logger.info("Migration successful: salary_frequency added to employees.")
             
             # --- WORK DAYS MIGRATION ---
-            try:
-                await conn.execute(text("SELECT work_days FROM employees LIMIT 1"))
-            except Exception:
+            result = await conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='employees' AND column_name='work_days'"))
+            if not result.scalar():
                 logger.info("Migrating: Adding work_days to employees table...")
                 # Default to Mon-Sat (0,1,2,3,4,5)
                 await conn.execute(text("ALTER TABLE employees ADD COLUMN work_days VARCHAR(50) DEFAULT '0,1,2,3,4,5'"))
