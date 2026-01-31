@@ -40,7 +40,7 @@ from .audit import latest, log
 
 # Import Routers
 from .routers import users, branches, employees as employees_api, attendance as attendance_api, leaves as leaves_api, deposits as deposits_api, sales
-from .routers import pay
+from .routers import pay, reports
 # --- MODIFIÉ : Importer les nouvelles dépendances ---
 from .deps import get_db, web_require_permission
 # --- NOUVEAU: Import de la fonction safe si elle est dans deps.py ---
@@ -155,6 +155,7 @@ app.include_router(expenses.router)
 app.include_router(sync.router)
 app.include_router(pay.router)
 app.include_router(sales.router)
+app.include_router(reports.router)
 # --- FIN NOUVEAU ---
 # --- 2. Static/Templates Setup ---
 BASE_DIR = os.path.dirname(__file__)
