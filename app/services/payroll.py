@@ -4,6 +4,7 @@ from typing import List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
+from sqlalchemy.orm import selectinload
 from app.models import Employee, Attendance, AttendanceType, Deposit, SalesSummary, Pay, PayType, Loan, ScheduleStatus, LoanSchedule
 
 class PayrollService:
@@ -20,7 +21,8 @@ class PayrollService:
         """
         
         # 1. Fetch Active Employees (filtered by branch if provided)
-        stmt_emp = select(Employee).where(Employee.active == True)
+        # Use selectinload to eagerly load the 'branch' relationship to avoid async errors
+        stmt_emp = select(Employee).options(selectinload(Employee.branch)).where(Employee.active == True)
         if branch_id:
             stmt_emp = stmt_emp.where(Employee.branch_id == branch_id)
         
