@@ -29,6 +29,15 @@ async def run_migrations():
                 await conn.execute(text("ALTER TABLE employees ADD COLUMN salary_frequency VARCHAR(50) DEFAULT 'monthly'"))
                 logger.info("Migration successful: salary_frequency added to employees.")
             
+            # --- WORK DAYS MIGRATION ---
+            try:
+                await conn.execute(text("SELECT work_days FROM employees LIMIT 1"))
+            except Exception:
+                logger.info("Migrating: Adding work_days to employees table...")
+                # Default to Mon-Sat (0,1,2,3,4,5)
+                await conn.execute(text("ALTER TABLE employees ADD COLUMN work_days VARCHAR(50) DEFAULT '0,1,2,3,4,5'"))
+                logger.info("Migration successful: work_days added to employees.")
+            
             # --- ENUM MIGRATION (Postgres) ---
             try:
                 # Add 'sick_unpaid' to LeaveType enum if not exists

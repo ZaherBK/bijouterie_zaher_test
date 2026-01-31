@@ -547,7 +547,8 @@ async def employees_create(
     cin: Annotated[str, Form()] = None,
     salary: Annotated[Decimal, Form()] = None,
     has_cnss: bool = Form(False),
-    salary_frequency: Annotated[SalaryFrequency, Form()] = SalaryFrequency.monthly
+    salary_frequency: Annotated[SalaryFrequency, Form()] = SalaryFrequency.monthly,
+    work_days: Annotated[list[int], Form()] = []
 ):
     permissions = user.get("permissions", {})
     
@@ -570,10 +571,17 @@ async def employees_create(
         if res_cin.scalar_one_or_none():
             return RedirectResponse(request.url_for('employees_page'), status_code=status.HTTP_302_FOUND)
 
+    # Process Work Days
+    if not work_days:
+        work_days_str = "0,1,2,3,4,5" # Default Mon-Sat
+    else:
+        work_days_str = ",".join(map(str, sorted(work_days)))
+    
     new_employee = Employee(
         first_name=first_name, last_name=last_name, cin=cin or None,
         position=position, branch_id=branch_id, salary=salary, active=True,
-        has_cnss=has_cnss, salary_frequency=salary_frequency
+        has_cnss=has_cnss, salary_frequency=salary_frequency,
+        work_days=work_days_str
     )
     db.add(new_employee)
     await db.commit()
@@ -599,7 +607,8 @@ async def employees_update(
     cin: Annotated[str, Form()] = None,
     salary: Annotated[Decimal, Form()] = None,
     has_cnss: bool = Form(False),
-    salary_frequency: Annotated[SalaryFrequency, Form()] = SalaryFrequency.monthly
+    salary_frequency: Annotated[SalaryFrequency, Form()] = SalaryFrequency.monthly,
+    work_days: Annotated[list[int], Form()] = []
 ):
     # Fetch Employee
     res_emp = await db.execute(select(Employee).where(Employee.id == employee_id))
@@ -627,7 +636,23 @@ async def employees_update(
     employee.salary = salary
     employee.branch_id = branch_id
     employee.has_cnss = has_cnss
-    employee.salary_frequency = salary_frequency # <-- UPDATE
+    employee.salary_frequency = salary_frequency
+    
+    # Process Work Days
+    if not work_days:
+         # If unselected, assume default? Or empty? Better default to current if empty list not sent?
+         # Browser inputs: uncheck all -> send nothing. 
+         # But usually we want at least one day.
+         # For safety, if empty list, let's assume default Mon-Sat or keep existing?
+         # Actually, html checkboxes send nothing if unchecked. 
+         # Let's assume user unchecked everything -> Empty string.
+         # But the user specifically asked for checkboxes.
+         # Let's default to "0,1,2,3,4,5" if really empty to avoid div/0 errors later, 
+         # unless we handle 0 work days in calculation.
+         # Let's stick to default Mon-Sat if empty to be safe.
+         employee.work_days = "0,1,2,3,4,5"
+    else:
+         employee.work_days = ",".join(map(str, sorted(work_days)))
 
     await db.commit()
     await db.refresh(employee)

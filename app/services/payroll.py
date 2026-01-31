@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import List, Optional
 
@@ -137,17 +137,32 @@ class PayrollService:
             emp_absences = abs_map[emp.id]
             abs_count = len(emp_absences)
             
+            # --- SCHEDULE (Work Days) ---
+            # Default Mon-Sat (0-5) if missing
+            work_days_str = emp.work_days if hasattr(emp, 'work_days') and emp.work_days else "0,1,2,3,4,5"
+            try:
+                scheduled_days = {int(d) for d in work_days_str.split(',') if d.strip()}
+            except:
+                scheduled_days = {0,1,2,3,4,5}
+
+            # --- Calculate Actual Working Days in Period ---
+            # Used for Exact Daily Rate
+            actual_work_days_count = 0
+            curr = start_date
+            while curr <= end_date:
+                if curr.weekday() in scheduled_days:
+                    actual_work_days_count += 1
+                curr += timedelta(days=1)
+            
             # --- Leaves (calc unpaid days) ---
             emp_leaves = leave_map[emp.id]
             unpaid_leave_days = 0
             for l in emp_leaves:
                 if l.ltype.value in ['unpaid', 'sick_unpaid']:
-                    # Calculate DURATION excluding SUNDAYS (6/7 Work Week)
-                    # We iterate through days to verify specific off-days
+                    # Calculate DURATION based on SCHEDULE
                     curr = l.start_date
                     while curr <= l.end_date:
-                        # 0=Mon, 6=Sun. Skip Sunday.
-                        if curr.weekday() != 6: 
+                        if curr.weekday() in scheduled_days: 
                             unpaid_leave_days += 1
                         curr += timedelta(days=1)
             
@@ -155,8 +170,12 @@ class PayrollService:
             # Deduction covers Absences (AttendanceType.absent) AND Unpaid Leaves
             total_deduction_days = abs_count + unpaid_leave_days
             
-            # Assuming 26 working days for monthly deduction
-            daily_rate = salary / Decimal(26) if salary > 0 else Decimal(0)
+            # EXACT Daily Rate = Salary / Actual Working Days
+            if actual_work_days_count > 0 and salary > 0:
+                daily_rate = salary / Decimal(actual_work_days_count)
+            else:
+                daily_rate = Decimal(0)
+            
             deduction = daily_rate * Decimal(total_deduction_days)
             
             # --- Advances ---
