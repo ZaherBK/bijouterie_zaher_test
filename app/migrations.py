@@ -28,6 +28,16 @@ async def run_migrations():
                 logger.info("Migrating: Adding salary_frequency to employees table...")
                 await conn.execute(text("ALTER TABLE employees ADD COLUMN salary_frequency VARCHAR(50) DEFAULT 'monthly'"))
                 logger.info("Migration successful: salary_frequency added to employees.")
+            
+            # --- ENUM MIGRATION (Postgres) ---
+            try:
+                # Add 'sick_unpaid' to LeaveType enum if not exists
+                # This syntax is generic for Postgres but fails gracefully on SQLite
+                await conn.execute(text("ALTER TYPE leavetype ADD VALUE IF NOT EXISTS 'sick_unpaid'"))
+                logger.info("Migrated Enum: Added 'sick_unpaid' to leavetype.")
+            except Exception as e:
+                # Expected on SQLite or if already exists in older PG versions
+                logger.info(f"Enum migration skipped (checked): {e}")
 
         except Exception as e:
             logger.error(f"Migration check failed: {e}")

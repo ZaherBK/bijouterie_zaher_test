@@ -141,7 +141,7 @@ class PayrollService:
             emp_leaves = leave_map[emp.id]
             unpaid_leave_days = 0
             for l in emp_leaves:
-                if l.ltype.value == 'unpaid':
+                if l.ltype.value in ['unpaid', 'sick_unpaid']:
                     # Calculate DURATION excluding SUNDAYS (6/7 Work Week)
                     # We iterate through days to verify specific off-days
                     curr = l.start_date

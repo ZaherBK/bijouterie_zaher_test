@@ -179,6 +179,7 @@ class LeaveType(str, enum.Enum):
     paid = "paid"
     unpaid = "unpaid"
     sick = "sick"
+    sick_unpaid = "sick_unpaid"
 
 
 class Leave(Base):  # Congé

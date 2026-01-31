@@ -45,12 +45,13 @@ async def export_payroll(
     # Headers - Manual Worksheet Style
     headers = [
         "Store", "Employé", "CIN", "Fonction", "Sal. Base", 
-        "Absences (Jours)", "Détail Absences (Dates)", 
-        "Total Avances", "Détail Avances (Date: Montant)",
+        "Absences (Jours)", "Détail Absences", 
+        "Congés (Jours Non Payés)", "Détail Congés",
+        "Jours Déduits Total", "Déduction (Est.)", # NEW
+        "Total Avances", "Détail Avances",
         "Prêts (Dû)", 
-        "Congés (Dates - Type)",
         "Ventes (Qty)", "Ventes (Rev)", 
-        "Notes / Signature"
+        "Net à Payer (Est.)", "Notes / Signature"
     ]
     
     # Styles
@@ -90,7 +91,13 @@ async def export_payroll(
         # Leaves: "01/01->05/01 (Payé)"
         leave_details = []
         for l in stats["leaves_list"]:
-            l_type = "Payé" if l.ltype.value == 'paid' else "Non Payé"
+            l_type_map = {
+                "paid": "Payé",
+                "unpaid": "Non Payé",
+                "sick": "Maladie (Payé)",
+                "sick_unpaid": "Maladie (Non Payé)"
+            }
+            l_type = l_type_map.get(l.ltype.value, l.ltype.value)
             leave_details.append(f"{l.start_date.strftime('%d/%m')}->{l.end_date.strftime('%d/%m')} ({l_type})")
         leave_str = "\n".join(leave_details) if leave_details else "-"
 
@@ -102,12 +109,16 @@ async def export_payroll(
             float(stats["salary"]),
             stats["absences_count"],
             abs_str,
+            stats.get("unpaid_leave_days", 0), # New: Computed Unpaid Days
+            leave_str,
+            stats.get("total_deduction_days", 0), # New: Total Days Deducted
+            float(stats.get("deduction_amount", 0)), # New: Deduction Amount
             float(stats["advances_total"]),
             adv_str,
             float(stats["loans_due_total"]),
-            leave_str,
             stats["sales_qty"],
             float(stats["sales_rev"]),
+            float(stats.get("net_estimated", 0)), # New: Net
             "" # Signature
         ]
         
@@ -115,13 +126,13 @@ async def export_payroll(
             cell = ws.cell(row=row_num, column=col_num, value=val)
             cell.border = thin_border
             # Wrap text for detail columns
-            if col_num in [7, 9, 11]: 
+            if col_num in [7, 9, 13]: 
                 cell.alignment = left_align
             else:
                 cell.alignment = center_align
                 
-            # Format Currency columns
-            if col_num in [5, 8, 10, 13]:
+            # Format Currency columns: Sal(5), Ded(11), Av(12), Prêt(14), Rev(16), Net(17)
+            if col_num in [5, 11, 12, 14, 16, 17]:
                 cell.number_format = '#,##0.000 "DT"'
             
         row_num += 1
@@ -129,11 +140,11 @@ async def export_payroll(
     # Adjust Column Widths
     ws.column_dimensions['A'].width = 15
     ws.column_dimensions['B'].width = 25
-    ws.column_dimensions['G'].width = 20 # Abs Detail
-    ws.column_dimensions['H'].width = 15 # Avance Total
-    ws.column_dimensions['I'].width = 25 # Avance Detail
-    ws.column_dimensions['K'].width = 30 # Leaves
-    ws.column_dimensions['N'].width = 30 # Sig
+    ws.column_dimensions['G'].width = 15 # Abs Detail
+    ws.column_dimensions['I'].width = 25 # Leaves Detail
+    ws.column_dimensions['L'].width = 15 # Av Total
+    ws.column_dimensions['Q'].width = 18 # Net
+    ws.column_dimensions['R'].width = 20 # Sig
 
     # 3. Save to Stream
     output = BytesIO()

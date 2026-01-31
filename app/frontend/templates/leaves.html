@@ -43,7 +43,8 @@
         <select id="ltype" name="ltype" class="form-select" required>
           <option value="paid">Payé</option>
           <option value="unpaid">Non Payé</option>
-          <option value="sick">Maladie</option>
+          <option value="sick">Maladie (Payé)</option>
+          <option value="sick_unpaid">Maladie (Non Payé)</option>
         </select>
       </div>
     </div>
@@ -100,10 +101,12 @@
           {# --- FIX: Added timestamp class for consistency --- #}
           <td class="timestamp">{{ l.start_date.strftime('%Y-%m-%d') }} → {{ l.end_date.strftime('%Y-%m-%d') }}</td>
           <td>
-            {% if l.ltype == 'paid' %}<span class="badge ltype-paid">Payé</span>
-            {% elif l.ltype == 'unpaid' %}<span class="badge ltype-unpaid">Non Payé</span>
-            {% elif l.ltype == 'sick' %}<span class="badge ltype-sick">Maladie</span>
-            {% else %}{{ l.ltype }}
+            {% if l.ltype.value == 'paid' %}<span class="badge ltype-paid">Payé</span>
+            {% elif l.ltype.value == 'unpaid' %}<span class="badge ltype-unpaid">Non Payé</span>
+            {% elif l.ltype.value == 'sick' %}<span class="badge ltype-sick">Maladie (Payé)</span>
+            {% elif l.ltype.value == 'sick_unpaid' %}<span class="badge ltype-sick" style="opacity: 0.8;">Maladie (Non
+              Payé)</span>
+            {% else %}{{ l.ltype.value }}
             {% endif %}
           </td>
           <td>
