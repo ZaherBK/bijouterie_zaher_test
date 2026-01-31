@@ -33,43 +33,59 @@ class PayrollService:
         if not employee_ids:
             return []
 
-        # 2. Aggregations (Absences, Advances, Sales) using Subqueries or separate queries
-        # (Using separate queries here for clarity and easier maintenance, similar perf for small datasets)
+        # 2. Fetch Detailed Records (Absences, Advances, Leaves, Loans, Sales)
+        # Using separate queries for cleaner code (could be heavily joined, but this is clearer for maintenance)
 
-        # A. Absences count
+        # A. Absences (List of dates/notes)
         stmt_abs = (
-            select(
-                Attendance.employee_id,
-                func.count(Attendance.id).label("absence_count")
-            )
+            select(Attendance)
             .where(
                 Attendance.employee_id.in_(employee_ids),
                 Attendance.atype == AttendanceType.absent,
                 Attendance.date.between(start_date, end_date)
             )
-            .group_by(Attendance.employee_id)
+            .order_by(Attendance.date)
         )
         res_abs = await db.execute(stmt_abs)
-        abs_map = {row.employee_id: row.absence_count for row in res_abs.all()}
+        # Map: employee_id -> list[Attendance]
+        abs_map = {eid: [] for eid in employee_ids}
+        for row in res_abs.scalars().all():
+            abs_map[row.employee_id].append(row)
 
-        # B. Advances (Deposits) sum
+        # B. Advances (List of Deposits)
         stmt_adv = (
-            select(
-                Deposit.employee_id,
-                func.sum(Deposit.amount).label("avance_total")
-            )
+            select(Deposit)
             .where(
                 Deposit.employee_id.in_(employee_ids),
                 Deposit.date.between(start_date, end_date)
             )
-            .group_by(Deposit.employee_id)
+            .order_by(Deposit.date)
         )
         res_adv = await db.execute(stmt_adv)
-        adv_map = {row.employee_id: row.avance_total for row in res_adv.all()}
+        # Map: employee_id -> list[Deposit]
+        adv_map = {eid: [] for eid in employee_ids}
+        for row in res_adv.scalars().all():
+            adv_map[row.employee_id].append(row)
 
-        # C. Sales stats (Qty + Rev)
-        # Note: If branch_id is set, we might want to filter sales by store_name matches branch name
-        # but for global payroll, we usually want TOTAL sales per employee regardless of where they sold.
+        # C. Leaves (List of Leave objects) - NEW
+        from app.models import Leave # Ensure imported if not already top-level
+        stmt_leaves = (
+            select(Leave)
+            .where(
+                Leave.employee_id.in_(employee_ids),
+                # Check overlapping range or starts within range? 
+                # Usually: any part of leave falls in month. 
+                # Simple logic: start_date between provided range (for payroll view)
+                Leave.start_date.between(start_date, end_date) 
+            )
+            .order_by(Leave.start_date)
+        )
+        res_leaves = await db.execute(stmt_leaves)
+        leave_map = {eid: [] for eid in employee_ids}
+        for row in res_leaves.scalars().all():
+            leave_map[row.employee_id].append(row)
+
+        # D. Sales stats (Qty + Rev) - Aggregates stay useful for summary
         stmt_sales = (
             select(
                 SalesSummary.employee_id,
@@ -88,8 +104,9 @@ class PayrollService:
             for row in res_sales.all()
         }
         
-        # D. Loan Schedules Due (Approved & Pending/Partial) in range
-        # Matches logic from employee_report_index
+        # E. Loan Schedules Due (Aggregated Loan Payment Due this month)
+        # Keeping this as an Amount is fine, but user might want loan details?
+        # For now, sticking to total Due as requested ("prêts").
         stmt_loans = (
              select(
                 LoanSchedule.loan_id,
@@ -105,44 +122,49 @@ class PayrollService:
             .group_by(Loan.employee_id, LoanSchedule.loan_id)
         )
         res_loans = await db.execute(stmt_loans)
-        loan_map = {} 
+        loan_due_map = {} 
         for row in res_loans.all():
-            current = loan_map.get(row.employee_id, Decimal(0))
-            loan_map[row.employee_id] = current + (row.due_amount or Decimal(0))
+            current = loan_due_map.get(row.employee_id, Decimal(0))
+            loan_due_map[row.employee_id] = current + (row.due_amount or Decimal(0))
 
 
         # 3. Build Result List
         results = []
         for emp in employees:
             salary = emp.salary or Decimal(0)
-            absences = abs_map.get(emp.id, 0)
             
-            # Simple Deduction Logic (can be enhanced)
-            # Assuming 26 working days for monthly? Or using a daily rate.
-            # Simplified: deduction = (salary / 26) * absences
-            daily_rate = salary / Decimal(26) if salary > 0 else Decimal(0)
-            deduction = daily_rate * Decimal(absences)
+            # --- Absences ---
+            emp_absences = abs_map[emp.id]
+            abs_count = len(emp_absences)
             
-            advances = adv_map.get(emp.id, Decimal(0)) or Decimal(0)
-            loans_due = loan_map.get(emp.id, Decimal(0))
+            # --- Advances ---
+            emp_advances = adv_map[emp.id]
+            total_advances = sum((a.amount for a in emp_advances), Decimal(0))
             
+            # --- Leaves ---
+            emp_leaves = leave_map[emp.id]
+            
+            # --- Loans ---
+            loans_due = loan_due_map.get(emp.id, Decimal(0))
+            
+            # --- Sales ---
             sales_data = sales_map.get(emp.id, {"qty": 0, "rev": 0})
-            
-            # Estimated Net (excluding Primes for now, as they are variable)
-            # Net = Salary - Deduction - Advances - Loans
-            net_estimated = salary - deduction - advances - loans_due
             
             results.append({
                 "employee": emp,
                 "stats": {
                     "salary": salary,
-                    "absences": absences,
-                    "deduction": deduction,
-                    "advances": advances,
-                    "loans": loans_due,
+                    # Details
+                    "absences_list": emp_absences,  # List[Attendance]
+                    "advances_list": emp_advances,  # List[Deposit]
+                    "leaves_list": emp_leaves,      # List[Leave]
+                    
+                    # Summaries
+                    "absences_count": abs_count,
+                    "advances_total": total_advances,
+                    "loans_due_total": loans_due,
                     "sales_qty": sales_data["qty"],
-                    "sales_rev": sales_data["rev"],
-                    "net_estimated": net_estimated
+                    "sales_rev": sales_data["rev"]
                 }
             })
             

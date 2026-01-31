@@ -40,20 +40,24 @@ async def export_payroll(
     # 2. Create Excel
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "État de Paie"
+    ws.title = "État de Paie (Détails)"
     
-    # Headers
+    # Headers - Manual Worksheet Style
     headers = [
         "Store", "Employé", "CIN", "Fonction", "Sal. Base", 
-        "Jrs Abs.", "Déduction", "Avances", "Prêts", 
+        "Absences (Jours)", "Détail Absences (Dates)", 
+        "Total Avances", "Détail Avances (Date: Montant)",
+        "Prêts (Dû)", 
+        "Congés (Dates - Type)",
         "Ventes (Qty)", "Ventes (Rev)", 
-        "Net à Payer (Est.)", "Signature"
+        "Notes / Signature"
     ]
     
     # Styles
     header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-    center_align = Alignment(horizontal="center", vertical="center")
+    header_fill = PatternFill(start_color="2E7D32", end_color="2E7D32", fill_type="solid") # Green for "Worksheet"
+    center_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left_align = Alignment(horizontal="left", vertical="center", wrap_text=True)
     thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
     
     # Draw Headers
@@ -73,27 +77,51 @@ async def export_payroll(
         branch_name = emp.branch.name if emp.branch else "N/A"
         full_name = f"{emp.first_name} {emp.last_name}"
         
+        # --- Format Details ---
+        
+        # Absences: "01/01 \n 05/01"
+        abs_dates = [a.date.strftime('%d/%m') for a in stats["absences_list"]]
+        abs_str = "\n".join(abs_dates) if abs_dates else "-"
+        
+        # Advances: "01/01: 50dt \n 10/01: 20dt"
+        adv_details = [f"{d.date.strftime('%d/%m')}: {d.amount:.0f}" for d in stats["advances_list"]]
+        adv_str = "\n".join(adv_details) if adv_details else "-"
+        
+        # Leaves: "01/01->05/01 (Payé)"
+        leave_details = []
+        for l in stats["leaves_list"]:
+            l_type = "Payé" if l.ltype.value == 'paid' else "Non Payé"
+            leave_details.append(f"{l.start_date.strftime('%d/%m')}->{l.end_date.strftime('%d/%m')} ({l_type})")
+        leave_str = "\n".join(leave_details) if leave_details else "-"
+
         row = [
             branch_name,
             full_name,
             emp.cin or "",
             emp.position,
             float(stats["salary"]),
-            stats["absences"],
-            float(stats["deduction"]),
-            float(stats["advances"]),
-            float(stats["loans"]),
+            stats["absences_count"],
+            abs_str,
+            float(stats["advances_total"]),
+            adv_str,
+            float(stats["loans_due_total"]),
+            leave_str,
             stats["sales_qty"],
             float(stats["sales_rev"]),
-            float(stats["net_estimated"]),
             "" # Signature
         ]
         
         for col_num, val in enumerate(row, 1):
             cell = ws.cell(row=row_num, column=col_num, value=val)
             cell.border = thin_border
+            # Wrap text for detail columns
+            if col_num in [7, 9, 11]: 
+                cell.alignment = left_align
+            else:
+                cell.alignment = center_align
+                
             # Format Currency columns
-            if col_num in [5, 7, 8, 9, 11, 12]:
+            if col_num in [5, 8, 10, 13]:
                 cell.number_format = '#,##0.000 "DT"'
             
         row_num += 1
@@ -101,17 +129,18 @@ async def export_payroll(
     # Adjust Column Widths
     ws.column_dimensions['A'].width = 15
     ws.column_dimensions['B'].width = 25
-    ws.column_dimensions['C'].width = 12
-    ws.column_dimensions['D'].width = 15
-    ws.column_dimensions['L'].width = 20 # Net
-    ws.column_dimensions['M'].width = 15 # Sig
+    ws.column_dimensions['G'].width = 20 # Abs Detail
+    ws.column_dimensions['H'].width = 15 # Avance Total
+    ws.column_dimensions['I'].width = 25 # Avance Detail
+    ws.column_dimensions['K'].width = 30 # Leaves
+    ws.column_dimensions['N'].width = 30 # Sig
 
     # 3. Save to Stream
     output = BytesIO()
     wb.save(output)
     output.seek(0)
     
-    filename = f"Payroll_{start_date}_{end_date}.xlsx"
+    filename = f"Payroll_Worksheet_{start_date}_{end_date}.xlsx"
     
     return StreamingResponse(
         output, 
