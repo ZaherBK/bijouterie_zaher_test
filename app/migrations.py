@@ -32,6 +32,12 @@ async def run_migrations():
                 await conn.execute(text("ALTER TABLE employees ADD COLUMN work_days VARCHAR(50) DEFAULT '0,1,2,3,4,5'"))
                 logger.info("Migration successful: work_days added to employees.")
             
+            # --- FORCE WEEKLY PAYROLL MIGRATION ---
+            # As per user request: "all of them will be weekly"
+            # We update all existing employees to 'weekly'
+            await conn.execute(text("UPDATE employees SET salary_frequency = 'weekly'"))
+            logger.info("Migration: All employees updated to Weekly salary frequency.")
+
             # --- ENUM MIGRATION (Postgres) ---
             try:
                 # Add 'sick_unpaid' to LeaveType enum if not exists

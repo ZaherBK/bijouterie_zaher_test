@@ -170,12 +170,28 @@ class PayrollService:
             # Deduction covers Absences (AttendanceType.absent) AND Unpaid Leaves
             total_deduction_days = abs_count + unpaid_leave_days
             
-            # EXACT Daily Rate = Salary / Actual Working Days
-            if actual_work_days_count > 0 and salary > 0:
-                daily_rate = salary / Decimal(actual_work_days_count)
-            else:
-                daily_rate = Decimal(0)
+            # --- Exact Daily Rate & Deduction Calc ---
+            # 1. Monthly Frequency (Legacy/Specific cases)
+            if emp.salary_frequency == "monthly":
+                if actual_work_days_count > 0 and salary > 0:
+                    daily_rate = salary / Decimal(actual_work_days_count)
+                else:
+                    daily_rate = Decimal(0)
             
+            # 2. Weekly Frequency (New Standard: Salary / 4)
+            else:
+                # "Salary" in DB is Monthly Base
+                weekly_base = salary / Decimal(4)
+                
+                # Count scheduled days per week (e.g. 6 days)
+                days_per_week = len(scheduled_days) if scheduled_days else 6 
+                
+                if days_per_week > 0:
+                    daily_rate = weekly_base / Decimal(days_per_week)
+                else:
+                    daily_rate = Decimal(0)
+
+            # Deduction
             deduction = daily_rate * Decimal(total_deduction_days)
             
             # --- Advances ---
@@ -188,13 +204,43 @@ class PayrollService:
             # --- Sales ---
             sales_data = sales_map.get(emp.id, {"qty": 0, "rev": 0})
             
+            # --- Gross Pay Calculation ---
+            # If Monthly: Gross = Monthly Salary
+            # If Weekly: Gross depends on how many weeks in the report range?
+            # User wants "Weekly Pay = Salary / 4".
+            # If report is 1 week -> Show 250.
+            # If report is 1 month -> Show 1000? 
+            # Or always show Weekly output? The report is "Global Payroll".
+            # Let's assume standard behavior:
+            # - Calculate "Earnable Pay" for the selected PERIOD.
+            
+            if emp.salary_frequency == "monthly":
+                # For monthly, we usually assume the full salary is for the full month
+                # But if range is partial, should we prorate?
+                # Sticking to simple logic: Show Full Salary as Base, Deduct absences.
+                gross_pay = salary
+            else:
+                # Weekly Logic
+                # We need to know how many "Weeks" are in the start_date->end_date range?
+                # Or simply: Gross = DailyRate * ScheduledWorkDaysInPeriod
+                # This ensures:
+                # 1 Week Report (6 work days) -> 41.66 * 6 = 250 (Correct)
+                # 4 Week Report (24 work days) -> 41.66 * 24 = 1000 (Correct)
+                
+                # We use actual_work_days_count calculated above (based on schedule)
+                # BUT 'actual_work_days_count' is what they SHOULD work.
+                # So Gross Potential = DailyRate * actual_work_days_count
+                
+                gross_pay = daily_rate * Decimal(actual_work_days_count)
+
             # --- Net ---
-            net_estimated = salary - deduction - total_advances - loans_due
+            net_estimated = gross_pay - deduction - total_advances - loans_due
             
             results.append({
                 "employee": emp,
                 "stats": {
-                    "salary": salary,
+                    "salary": gross_pay, # Show the Prorated/Period Salary, not just Base
+                    "base_salary": salary, # Keep track of contract salary if needed
                     # Details
                     "absences_list": emp_absences,  # List[Attendance]
                     "advances_list": emp_advances,  # List[Deposit]

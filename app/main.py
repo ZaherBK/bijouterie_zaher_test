@@ -547,7 +547,7 @@ async def employees_create(
     cin: Annotated[str, Form()] = None,
     salary: Annotated[Decimal, Form()] = None,
     has_cnss: bool = Form(False),
-    salary_frequency: Annotated[SalaryFrequency, Form()] = SalaryFrequency.monthly,
+    salary_frequency: Annotated[SalaryFrequency, Form()] = SalaryFrequency.weekly,
     work_days: Annotated[list[int], Form()] = []
 ):
     permissions = user.get("permissions", {})

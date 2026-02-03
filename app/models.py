@@ -139,7 +139,7 @@ class Employee(Base):
     branch_id: Mapped[int] = mapped_column(ForeignKey("branches.id"))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     salary: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
-    salary_frequency: Mapped[SalaryFrequency] = mapped_column(Enum(SalaryFrequency), default=SalaryFrequency.monthly)
+    salary_frequency: Mapped[SalaryFrequency] = mapped_column(Enum(SalaryFrequency), default=SalaryFrequency.weekly)
     # Comma-separated list of working days (0=Mon, 6=Sun). Default: Mon-Sat (0,1,2,3,4,5)
     work_days: Mapped[str] = mapped_column(String(50), default="0,1,2,3,4,5")
     has_cnss: Mapped[bool] = mapped_column(Boolean, default=False) # Checkbox CNSS
