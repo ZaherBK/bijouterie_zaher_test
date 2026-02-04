@@ -13,6 +13,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request # Ensure this is imported
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 # --- MODIFIÉ : Ajout de coalesce ---
 from sqlalchemy import select, update, delete, func, and_, or_, desc, asc, text, case, extract
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,6 +78,10 @@ app = FastAPI(
     title=APP_NAME,
     lifespan=lifespan
 )
+
+# Trust Proxy Headers (Render/Koyeb/Heroku)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 @app.get("/api/health")
 def health_check():
