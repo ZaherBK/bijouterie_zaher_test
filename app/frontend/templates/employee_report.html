@@ -30,7 +30,8 @@
       <!-- NEW: Excel Download Button -->
       <div class="form-group" style="margin-left: auto;">
         <label>&nbsp;</label>
-        <a href="{{ '/reports/export/payroll' }}" class="btn btn-success" target="_blank">
+        <a href="/reports/export/payroll{% if not user.permissions.is_admin %}?branch_id={{ user.branch_id }}{% endif %}"
+          class="btn btn-success" target="_blank">
           <i class="fa-solid fa-file-excel"></i> Télécharger Paie Global
         </a>
       </div>

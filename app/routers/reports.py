@@ -13,16 +13,24 @@ router = APIRouter(
     tags=["reports"]
 )
 
+from app.deps import web_require_permission
+
 @router.get("/export/payroll")
 async def export_payroll(
     start_date: date = Query(None),
     end_date: date = Query(None),
     branch_id: int = Query(None),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(web_require_permission("can_manage_employees"))
 ):
     """
     Generate and download Global Payroll Excel Report.
     """
+    permissions = user.get("permissions", {})
+    if not permissions.get("is_admin"):
+        # Force the manager's branch
+        branch_id = user.get("branch_id")
+
     if not start_date:
         today = date.today()
         start_date = today.replace(day=1)
