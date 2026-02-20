@@ -114,7 +114,7 @@ async def export_payroll(
             full_name,
             emp.cin or "",
             emp.position,
-            float(stats["salary"]),
+            float(stats["base_salary_display"]),
             stats["absences_count"],
             abs_str,
             stats.get("unpaid_leave_days", 0), # New: Computed Unpaid Days
