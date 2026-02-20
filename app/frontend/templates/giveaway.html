@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block header %}
+<link rel="stylesheet" href="{{ url_for('static', path='giveaway.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content giveaway-bg">
+    <div
+        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom border-secondary">
+        <h1 class="h2 text-white"><i class="bi bi-gift-fill text-warning me-2"></i> Tirage au Sort <span
+                class="badge bg-danger fs-6 align-middle">PRO</span></h1>
+    </div>
+
+    <div class="row g-4 giveaway-container">
+        <!-- LEFT PANEL: Info & Platform Switch -->
+        <div class="col-lg-4">
+            <!-- Platform Toggle -->
+            <div class="card premium-card mb-4">
+                <div class="card-body text-center p-4">
+                    <h5 class="text-white mb-4">Platforme</h5>
+                    <div class="btn-group btn-group-lg w-100" role="group">
+                        <input type="radio" class="btn-check" name="platform_btn" id="btn_fb" autocomplete="off" checked
+                            onchange="switchPlatform('facebook')">
+                        <label class="btn btn-outline-primary fw-bold" for="btn_fb"><i class="bi bi-facebook me-2"></i>
+                            Facebook</label>
+
+                        <input type="radio" class="btn-check" name="platform_btn" id="btn_ig" autocomplete="off"
+                            onchange="switchPlatform('instagram')">
+                        <label class="btn btn-outline-danger fw-bold" for="btn_ig"><i class="bi bi-instagram me-2"></i>
+                            Instagram</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Login / Account Status -->
+            <div class="card premium-card mb-4">
+                <div class="card-body p-4 text-center">
+                    <div id="demo-badge" class="badge bg-warning text-dark fs-6 mb-3"><i
+                            class="bi bi-lightning-fill"></i> API Demo Mode</div>
+                    <img src="{{ url_for('static', path='logo.png') }}" alt="Logo" class="img-fluid mb-3"
+                        style="max-height: 80px;">
+                    <h5 class="text-white">Connexion required for Live Data</h5>
+                    <p class="text-muted small">Log in as admin of the page and grant read permissions to fetch real
+                        posts and comments.</p>
+                    <button class="btn btn-primary w-100 fw-bold disabled" style="opacity: 0.5;">
+                        <i class="bi bi-facebook me-2"></i> Login with Meta (Not Setup)
+                    </button>
+                    <p class="text-success small mt-3 fw-bold"><i class="bi bi-check-circle-fill"></i> Using Simulated
+                        Data for Demo.</p>
+                </div>
+            </div>
+
+            <!-- Features List -->
+            <div class="card premium-card">
+                <div class="card-body p-4">
+                    <h6 class="text-white mb-3">Fonctionnalités</h6>
+                    <ul class="list-unstyled text-light mb-0 feature-list">
+                        <li><i class="bi bi-check2 text-success"></i> Multiple winners (Max 10)</li>
+                        <li><i class="bi bi-check2 text-success"></i> Filter duplicate users</li>
+                        <li><i class="bi bi-check2 text-success"></i> Require @mentions</li>
+                        <li><i class="bi bi-check2 text-success"></i> Require specific #hashtag</li>
+                        <li><i class="bi bi-check2 text-success"></i> Epic Slot-Machine Animation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Settings -->
+        <div class="col-lg-8">
+            <div class="card premium-card mb-4">
+                <div class="card-header bg-transparent border-secondary text-white fw-bold">
+                    <i class="bi bi-gear-fill me-2"></i> Paramètres du Tirage
+                </div>
+                <div class="card-body p-4">
+                    <!-- Post Selection -->
+                    <div class="row mb-4">
+                        <label class="col-sm-3 col-form-label text-light">Sélectionner un Post</label>
+                        <div class="col-sm-9">
+                            <select id="post-selector" class="form-select premium-input">
+                                <option value="" selected disabled>Loading posts...</option>
+                                <!-- Async loaded -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Filters Section -->
+                    <h6 class="text-warning mb-3 border-bottom border-secondary pb-2">Filtres et Règles</h6>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="filter_duplicates" checked>
+                        <label class="form-check-label text-light" for="filter_duplicates">
+                            Ignorer les doublons (1 chance par utilisateur)
+                        </label>
+                    </div>
+
+                    <div class="row mb-3 align-items-center">
+                        <div class="col-md-6">
+                            <label class="form-label text-light mb-1">Mentions Requises (@)</label>
+                            <select id="min_mentions" class="form-select premium-input">
+                                <option value="0">Aucune</option>
+                                <option value="1">1 mention (ex: @ami)</option>
+                                <option value="2">2 mentions (ex: @ami1 @ami2)</option>
+                                <option value="3">3 mentions minimum</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-light mb-1">Mot ou Hashtag Requis</label>
+                            <input type="text" id="required_word" class="form-control premium-input"
+                                placeholder="ex: #ConcoursZaher">
+                        </div>
+                    </div>
+
+                    <!-- Raffle Settings -->
+                    <h6 class="text-warning mb-3 mt-4 border-bottom border-secondary pb-2">Paramètres des Gagnants</h6>
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <label class="form-label text-light">Nombre de Gagnants</label>
+                            <input type="number" id="num_winners" class="form-control premium-input" value="1" min="1"
+                                max="10">
+                        </div>
+                        <div class="col-md-6 text-end mt-4">
+                            <button class="btn btn-warning btn-lg fw-bold px-5 magic-button" onclick="startDraw()">
+                                <i class="bi bi-play-circle-fill me-2"></i> LANCER LE TIRAGE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RESULTS PANEL (Hidden initially) -->
+            <div id="results-panel" class="card premium-card border-warning" style="display: none;">
+                <div class="card-header bg-warning text-dark fw-bold text-center fs-5">
+                    <i class="bi bi-trophy-fill me-2"></i> Résultats du Tirage
+                </div>
+                <div class="card-body p-5">
+
+                    <!-- Winner Display Area -->
+                    <div id="winner-reveal-area" class="text-center">
+                        <!-- Loaded dynamically via JS -->
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</main>
+
+<!-- Fullscreen Overlay Animation (Slot Machine) -->
+<div id="slot-machine-overlay" class="slot-overlay d-flex justify-content-center align-items-center"
+    style="display: none !important;">
+    <div class="slot-container text-center">
+        <h2 class="text-warning mb-4" id="slot-title">Recherche des Gagnants...</h2>
+        <div class="slot-window bg-dark border border-warning rounded p-4 shadow-lg">
+            <div id="slot-reel" class="slot-reel text-white fs-2 fw-bold">
+                <!-- Rolling names go here -->
+                <div class="slot-item">Chargement des commentaires...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', path='giveaway.js') }}"></script>
+{% endblock %}

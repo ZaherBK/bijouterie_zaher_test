@@ -80,6 +80,29 @@
               </a>
             </li>
 
+            {% if user.permissions.is_admin or user.permissions.can_view_reports %}
+            <h6 class="sidebar-heading px-3 mt-3 mb-1">Rapports & Outils</h6>
+            {% endif %}
+
+            {% if user.permissions.is_admin or user.permissions.can_view_reports %}
+            <li class="nav-item">
+              <a class="nav-link {% if request.url.path == url_for('employee_report_index') %}active{% endif %}"
+                href="{{ url_for('employee_report_index') }}">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Fiches de Paie
+              </a>
+            </li>
+            {% endif %}
+
+            {% if user.permissions.is_admin %}
+            <li class="nav-item">
+              <a class="nav-link {% if request.url.path == url_for('giveaways_page') %}active{% endif %}"
+                href="{{ url_for('giveaways_page') }}">
+                <i class="bi bi-gift-fill text-warning"></i> Tirage au Sort <span
+                  class="badge bg-danger ms-1">PRO</span>
+              </a>
+            </li>
+            {% endif %}
+
             {% if user.permissions.is_admin or user.permissions.can_manage_absences or
             user.permissions.can_manage_deposits or user.permissions.can_manage_leaves or
             user.permissions.can_manage_pay or user.permissions.can_manage_expenses %}

@@ -1,0 +1,136 @@
+/* giveaway.css */
+
+.giveaway-bg {
+    background: linear-gradient(135deg, #1a1c29 0%, #0d0e15 100%);
+    min-height: 100vh;
+}
+
+.premium-card {
+    background: rgba(30, 33, 48, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.premium-input {
+    background-color: rgba(15, 17, 26, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: #fff !important;
+}
+
+.premium-input:focus {
+    border-color: #ffc107 !important;
+    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
+}
+
+.magic-button {
+    background: linear-gradient(45deg, #ffc107, #ff9800);
+    border: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.magic-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255, 152, 0, 0.4);
+}
+
+.feature-list li {
+    margin-bottom: 10px;
+}
+
+/* --- SLOT MACHINE OVERLAY --- */
+.slot-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 12, 16, 0.95);
+    z-index: 9999;
+    flex-direction: column;
+}
+
+.slot-window {
+    width: 600px;
+    max-width: 90vw;
+    height: 120px;
+    overflow: hidden;
+    position: relative;
+    border-width: 3px !important;
+    box-shadow: 0 0 30px rgba(255, 193, 7, 0.4);
+    background: linear-gradient(180deg, #111 0%, #222 50%, #111 100%);
+}
+
+.slot-reel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    /* The reel will be animated using JS transform or top */
+}
+
+.slot-item {
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    box-sizing: border-box;
+}
+
+/* Winner Card */
+.winner-card {
+    background: linear-gradient(135deg, #2a2d3e 0%, #1c1e2b 100%);
+    border: 2px solid #ffc107;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    animation: scaleIn 0.5s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.winner-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 193, 7, 0.1) 0%, transparent 70%);
+    animation: rotate 10s linear infinite;
+}
+
+@keyframes scaleIn {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes rotate {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.winner-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid #ffc107;
+    object-fit: cover;
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.5);
+}

@@ -391,3 +391,38 @@ class Expense(Base):
     branch = relationship("Branch")
 
 
+# --- GIVEAWAY MODELS (FACEBOOK & INSTAGRAM) ---
+
+class GiveawayCampaign(Base):
+    __tablename__ = "giveaway_campaigns"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    platform: Mapped[str] = mapped_column(String(20)) # "facebook" or "instagram"
+    post_id: Mapped[str] = mapped_column(String(255))
+    post_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True) # Optional title for the raffle
+    num_winners: Mapped[int] = mapped_column(Integer, default=1)
+    
+    # Store applied filters as a JSON string or simple text for audit
+    filters_applied: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    creator = relationship("User")
+    winners = relationship("GiveawayWinner", back_populates="campaign", cascade="all, delete-orphan")
+
+
+class GiveawayWinner(Base):
+    __tablename__ = "giveaway_winners"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    campaign_id: Mapped[int] = mapped_column(ForeignKey("giveaway_campaigns.id"), index=True)
+    
+    platform_user_id: Mapped[str] = mapped_column(String(255)) # Facebook/IG user ID
+    platform_user_name: Mapped[str] = mapped_column(String(255))
+    profile_pic_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    comment_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
+    chosen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    campaign = relationship("GiveawayCampaign", back_populates="winners")
