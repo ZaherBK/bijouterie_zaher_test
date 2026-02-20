@@ -21,7 +21,7 @@ async def export_payroll(
     end_date: date = Query(None),
     branch_id: int = Query(None),
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(web_require_permission("can_manage_employees"))
+    user: dict = Depends(web_require_permission("can_view_reports"))
 ):
     """
     Generate and download Global Payroll Excel Report.
