@@ -200,6 +200,18 @@ async def branches_page(
     return templates.TemplateResponse("branches.html", context)
 
 
+@app.get("/privacy-policy", response_class=HTMLResponse, name="privacy_policy_page")
+async def privacy_policy_page(request: Request):
+    """Page de politique de confidentialité (Public)."""
+    return templates.TemplateResponse("privacy_policy.html", {"request": request, "app_name": APP_NAME})
+
+
+@app.get("/data-deletion", response_class=HTMLResponse, name="data_deletion_page")
+async def data_deletion_page(request: Request):
+    """Page d'instructions de suppression des données (Public)."""
+    return templates.TemplateResponse("data_deletion.html", {"request": request, "app_name": APP_NAME})
+
+
 # --- 2. Static/Templates Setup ---
 
 def format_datetime_tunisia(dt: datetime | None):
