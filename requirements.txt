@@ -23,3 +23,6 @@ pymysql>=1.1.0
 
 # Excel Export
 openpyxl>=3.1.2
+
+# External API Requests
+httpx>=0.28.1
