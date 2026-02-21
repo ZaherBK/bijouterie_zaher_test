@@ -30,17 +30,96 @@ async def giveaways_page(
     }
     return templates.TemplateResponse("giveaway.html", context)
 
+import os
+import httpx
+from urllib.parse import urlencode
+from fastapi.responses import RedirectResponse
+
+# --- LIVE OAUTH API ENDPOINTS ---
+
+@router.get("/auth/login")
+async def facebook_login(request: Request):
+    """Refers the user to the Meta OAuth login page."""
+    app_id = os.getenv("FB_APP_ID")
+    if not app_id:
+        # Prevent crash if user clicks it without setting up .env yet
+        return RedirectResponse(url="/giveaways/?error=missing_fb_keys")
+        
+    redirect_uri = str(request.url_for("facebook_callback"))
+    
+    # We request permissions to read pages and manage comments
+    permissions = "pages_show_list,pages_read_engagement,pages_manage_metadata,instagram_basic"
+    
+    oauth_url = f"https://www.facebook.com/v19.0/dialog/oauth?" + urlencode({
+        "client_id": app_id,
+        "redirect_uri": redirect_uri,
+        "scope": permissions,
+        "response_type": "code"
+    })
+    
+    return RedirectResponse(url=oauth_url)
+
+@router.get("/auth/callback", name="facebook_callback")
+async def facebook_callback(request: Request, code: str = None, error: str = None):
+    """Handles the OAuth redirect from Meta."""
+    if error or not code:
+        return RedirectResponse(url="/giveaways/?error=auth_failed")
+        
+    app_id = os.getenv("FB_APP_ID")
+    app_secret = os.getenv("FB_APP_SECRET")
+    redirect_uri = str(request.url_for("facebook_callback"))
+    
+    # Exchange code for token
+    token_url = "https://graph.facebook.com/v19.0/oauth/access_token"
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(token_url, params={
+            "client_id": app_id,
+            "redirect_uri": redirect_uri,
+            "client_secret": app_secret,
+            "code": code
+        })
+        
+        data = resp.json()
+        if "access_token" in data:
+            # Store safely in session
+            request.session["fb_access_token"] = data["access_token"]
+            return RedirectResponse(url="/giveaways/?success=connected")
+            
+    return RedirectResponse(url="/giveaways/?error=token_exchange_failed")
+
+@router.get("/api/live/pages")
+async def get_live_pages(request: Request):
+    """Fetches Facebook Pages the user manages."""
+    token = request.session.get("fb_access_token") or os.getenv("FB_ACCESS_TOKEN")
+    if not token:
+        return {"error": "not_authenticated"}
+        
+    async with httpx.AsyncClient() as client:
+        resp = await client.get("https://graph.facebook.com/v19.0/me/accounts", params={
+            "access_token": token,
+            "fields": "id,name,access_token"
+        })
+        return resp.json()
+
+@router.get("/api/live/posts/{page_id}")
+async def get_live_posts(request: Request, page_id: str):
+    """Fetches Posts for a specific Page."""
+    token = request.session.get("fb_access_token") or os.getenv("FB_ACCESS_TOKEN")
+    if not token:
+        return {"error": "not_authenticated"}
+        
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"https://graph.facebook.com/v19.0/{page_id}/posts", params={
+            "access_token": token,
+            "fields": "id,message,created_time",
+            "limit": 20
+        })
+        return resp.json()
+
+
 # --- DEMO API ENDPOINTS ---
 
 @router.get("/api/demo/posts")
-async def get_demo_posts():
-    """Return fake posts for the demo UI."""
-    return [
-        {"id": "post_1", "text": "Win a 24k Gold Necklace! Tag 2 friends.", "date": "2026-02-15", "platform": "facebook"},
-        {"id": "post_2", "text": "Diamond Ring Giveaway 💍 Comment your favorite emoji!", "date": "2026-02-10", "platform": "instagram"}
-    ]
-
-@router.post("/api/draw")
 async def draw_winners(
     request: Request,
     db: AsyncSession = Depends(get_db),

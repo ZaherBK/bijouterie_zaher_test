@@ -2,19 +2,98 @@
 
 let currentPlatform = 'facebook';
 let isRunning = false;
+let isLiveMode = false;
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadDemoPosts();
+    // Check if we are in live mode based on the presence of the page-selector
+    const pageSelector = document.getElementById('page-selector');
+    if (pageSelector) {
+        isLiveMode = true;
+        loadLivePages();
+    } else {
+        loadDemoPosts();
+    }
 });
 
 function switchPlatform(platform) {
     currentPlatform = platform;
-    loadDemoPosts();
+    if (isLiveMode) {
+        // Facebook Graph API /me/accounts usually handles Pages mainly. 
+        // For Instagram, we'd need a specific Instagram Business Account flow.
+        // For now, reload pages if applicable or handle IG logic later.
+        loadLivePages();
+    } else {
+        loadDemoPosts();
+    }
+}
+
+async function loadLivePages() {
+    const selector = document.getElementById('page-selector');
+    if (!selector) return;
+
+    selector.innerHTML = '<option value="" disabled selected>Loading Pages...</option>';
+
+    try {
+        const response = await fetch('/giveaways/api/live/pages');
+        const data = await response.json();
+
+        if (data.error) {
+            selector.innerHTML = `<option value="" disabled>Error: ${data.error}</option>`;
+            return;
+        }
+
+        selector.innerHTML = '<option value="" disabled selected>Select a Page...</option>';
+        if (data.data && data.data.length > 0) {
+            data.data.forEach(page => {
+                const opt = document.createElement('option');
+                opt.value = page.id;
+                opt.textContent = page.name;
+                selector.appendChild(opt);
+            });
+        } else {
+            selector.innerHTML = '<option value="" disabled>No Pages found.</option>';
+        }
+    } catch (e) {
+        console.error("Failed to load live pages", e);
+        selector.innerHTML = '<option value="" disabled>Network Error loading pages</option>';
+    }
+}
+
+// Global loadPagePosts function so it can be called from the HTML select onchange
+window.loadPagePosts = async function (pageId) {
+    const selector = document.getElementById('post-selector');
+    selector.innerHTML = '<option value="" disabled>Loading Posts...</option>';
+
+    try {
+        const response = await fetch(`/giveaways/api/live/posts/${pageId}`);
+        const data = await response.json();
+
+        selector.innerHTML = ''; // Clear for multi-select
+
+        if (data.data && data.data.length > 0) {
+            data.data.forEach(post => {
+                const opt = document.createElement('option');
+                opt.value = post.id;
+                const msg = post.message ? post.message.substring(0, 50) + "..." : "[No Text]";
+                const dt = new Date(post.created_time).toLocaleDateString();
+                opt.textContent = `${dt} - ${msg}`;
+                selector.appendChild(opt);
+            });
+        } else {
+            selector.innerHTML = '<option value="" disabled>No Posts found.</option>';
+        }
+
+    } catch (e) {
+        console.error("Failed to load page posts", e);
+        selector.innerHTML = '<option value="" disabled>Error loading posts</option>';
+    }
 }
 
 async function loadDemoPosts() {
     const selector = document.getElementById('post-selector');
-    selector.innerHTML = '<option value="" disabled selected>Loading...</option>';
+    if (!selector) return;
+
+    selector.innerHTML = '<option value="" disabled>Loading...</option>';
 
     try {
         const response = await fetch('/giveaways/api/demo/posts');
@@ -37,9 +116,14 @@ async function loadDemoPosts() {
 async function startDraw() {
     if (isRunning) return;
 
-    const postId = document.getElementById('post-selector').value;
-    if (!postId) {
-        alert("Veuillez sélectionner un post.");
+    const postSelector = document.getElementById('post-selector');
+
+    // Get all selected options
+    const selectedOptions = Array.from(postSelector.selectedOptions);
+    const postIds = selectedOptions.map(opt => opt.value);
+
+    if (postIds.length === 0 || postIds[0] === "") {
+        alert("Veuillez sélectionner au moins un post.");
         return;
     }
 
@@ -66,17 +150,18 @@ async function startDraw() {
     }
     reel.innerHTML = fakeNamesHTML;
 
-    // 2. Send API Request
+    // 2. Send API Request (Modify backend to accept list of post_ids)
     try {
         isRunning = true;
         const response = await fetch('/giveaways/api/draw', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                post_id: postId,
+                post_ids: postIds, // <--- MODIFIED to send array
                 platform: currentPlatform,
                 num_winners: numWinners,
-                filters: filters
+                filters: filters,
+                is_live: isLiveMode
             })
         });
 

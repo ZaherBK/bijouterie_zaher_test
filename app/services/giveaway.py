@@ -6,22 +6,53 @@ from typing import List, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import GiveawayCampaign, GiveawayWinner
 
+import httpx
+
 class GiveawayService:
     @staticmethod
-    async def fetch_comments(post_id: str, platform: str) -> List[Dict[str, Any]]:
+    async def fetch_comments(post_ids: List[str], platform: str, fb_token: str = None) -> List[Dict[str, Any]]:
         """
         Fetches comments from the Meta Graph API if keys exist.
+        Aggregate comments from MULTIPLE posts if requested.
         Otherwise, returns a robust set of simulated comments for the Demo.
         """
-        fb_token = os.getenv("FB_ACCESS_TOKEN")
+        all_comments = []
         
-        if fb_token and "demo" not in post_id:
-            # TODO: Implement actual `httpx` call to Meta Graph API here
-            # e.g. GET https://graph.facebook.com/v19.0/{post_id}/comments
-            return []
+        is_demo = any("demo" in p or "post_" in p for p in post_ids)
+        
+        if fb_token and not is_demo:
+            # Live API Mode - aggregate from all selected posts
+            async with httpx.AsyncClient() as client:
+                for post_id in post_ids:
+                    # Fetch comments for this post
+                    resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/comments", params={
+                        "access_token": fb_token,
+                        "fields": "id,from,message,created_time",
+                        "summary": "1", # Get total count if needed
+                        "limit": 100    # Page through if necessary, keeping simple for now
+                    })
+                    data = resp.json()
+                    
+                    if "data" in data:
+                        for comment in data["data"]:
+                            from_user = comment.get("from", {})
+                            user_name = from_user.get("name", "Unknown User")
+                            all_comments.append({
+                                "id": comment.get("id"),
+                                "user_id": from_user.get("id", "unknown_id"),
+                                "user_name": user_name,
+                                "profile_pic_url": f"https://ui-avatars.com/api/?name={user_name.split(' ')[0]}&background=random&color=fff",
+                                "text": comment.get("message", ""),
+                                "timestamp": comment.get("created_time")
+                            })
+            return all_comments
         
         # --- DEMO MODE ---
-        return GiveawayService._generate_demo_comments()
+        # If they selected multiple demo posts, we just generate a massive pool
+        for _ in post_ids:
+            all_comments.extend(GiveawayService._generate_demo_comments())
+            
+        return all_comments
 
 
     @staticmethod
@@ -105,11 +136,11 @@ class GiveawayService:
         return filtered
 
     @staticmethod
-    async def draw_winners(db: AsyncSession, post_id: str, platform: str, num_winners: int, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def draw_winners(db: AsyncSession, post_ids: List[str], platform: str, num_winners: int, filters: Dict[str, Any], fb_token: str = None) -> List[Dict[str, Any]]:
         """
         Executes the full Giveaway pipeline: Fetch -> Filter -> Draw.
         """
-        raw_comments = await GiveawayService.fetch_comments(post_id, platform)
+        raw_comments = await GiveawayService.fetch_comments(post_ids, platform, fb_token)
         
         eligible_comments = GiveawayService.apply_filters(raw_comments, filters)
         
