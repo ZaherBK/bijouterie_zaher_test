@@ -45,7 +45,7 @@ async def facebook_login(request: Request):
         # Prevent crash if user clicks it without setting up .env yet
         return RedirectResponse(url="/giveaways/?error=missing_fb_keys")
         
-    redirect_uri = str(request.url_for("facebook_callback"))
+    redirect_uri = "https://hr-sync.onrender.com/giveaways/auth/callback"
     
     # We request permissions to read pages and manage comments
     permissions = "pages_show_list,pages_read_engagement,pages_manage_metadata,instagram_basic"
