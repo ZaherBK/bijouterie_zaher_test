@@ -48,7 +48,7 @@ async def facebook_login(request: Request):
     redirect_uri = "https://hr-sync.onrender.com/giveaways/auth/callback"
     
     # We request permissions to read pages and manage comments
-    permissions = "pages_show_list,pages_read_engagement,pages_manage_metadata,instagram_basic"
+    permissions = "pages_show_list,pages_read_engagement,pages_manage_metadata"
     
     oauth_url = f"https://www.facebook.com/v19.0/dialog/oauth?" + urlencode({
         "client_id": app_id,
