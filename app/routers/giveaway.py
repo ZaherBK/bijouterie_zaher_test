@@ -53,11 +53,20 @@ async def facebook_login(request: Request):
     oauth_url = f"https://www.facebook.com/v19.0/dialog/oauth?" + urlencode({
         "client_id": app_id,
         "redirect_uri": redirect_uri,
-        "scope": permissions,
+        "scope": permissions + ",instagram_basic,instagram_manage_comments",
         "response_type": "code"
     })
     
     return RedirectResponse(url=oauth_url)
+
+@router.get("/auth/logout")
+async def facebook_logout(request: Request):
+    """Disconnect Meta account by clearing token from session and cookies."""
+    if "fb_access_token" in request.session:
+        del request.session["fb_access_token"]
+    response = RedirectResponse(url="/giveaways/")
+    response.delete_cookie("fb_token")
+    return response
 
 @router.get("/auth/callback", name="facebook_callback")
 async def facebook_callback(request: Request, code: str = None, error: str = None):
@@ -97,33 +106,88 @@ async def facebook_callback(request: Request, code: str = None, error: str = Non
     return RedirectResponse(url="/giveaways/?error=token_exchange_failed")
 
 @router.get("/api/live/pages")
-async def get_live_pages(request: Request):
-    """Fetches Facebook Pages the user manages."""
+async def get_live_pages(request: Request, platform: str = "facebook"):
+    """Fetches Facebook Pages or Linked Instagram Accounts the user manages."""
     token = request.cookies.get("fb_token") or request.session.get("fb_access_token") or os.getenv("FB_ACCESS_TOKEN")
     if not token:
         return {"error": "not_authenticated"}
         
     async with httpx.AsyncClient() as client:
+        # Request both FB pages and their linked IG accounts
         resp = await client.get("https://graph.facebook.com/v19.0/me/accounts", params={
             "access_token": token,
-            "fields": "id,name,access_token"
+            "fields": "id,name,access_token,instagram_business_account{id,username,profile_picture_url}"
         })
-        return resp.json()
+        
+        data = resp.json()
+        
+        # If it fails (e.g. user hasn't explicitly granted Instagram permissions on a previous login)
+        if "error" in data:
+            fallback_resp = await client.get("https://graph.facebook.com/v19.0/me/accounts", params={
+                "access_token": token,
+                "fields": "id,name,access_token"
+            })
+            fallback_data = fallback_resp.json()
+            if "error" not in fallback_data:
+                data = fallback_data
+            else:
+                return data # If both fail, return the original error
+            
+        result = []
+        for page in data.get("data", []):
+            if platform == "instagram":
+                ig_account = page.get("instagram_business_account")
+                if ig_account:
+                    result.append({
+                        "id": ig_account["id"],
+                        "name": f"{ig_account.get('username', 'Instagram')} (via {page['name']})",
+                        "access_token": page["access_token"],
+                        "platform": "instagram",
+                        "page_id": page["id"]
+                    })
+            else:
+                result.append({
+                    "id": page["id"],
+                    "name": page["name"],
+                    "access_token": page["access_token"],
+                    "platform": "facebook"
+                })
+                
+        return {"data": result}
 
 @router.get("/api/live/posts/{page_id}")
-async def get_live_posts(request: Request, page_id: str):
-    """Fetches Posts for a specific Page."""
-    token = request.cookies.get("fb_token") or request.session.get("fb_access_token") or os.getenv("FB_ACCESS_TOKEN")
+async def get_live_posts(request: Request, page_id: str, platform: str = "facebook", page_token: str = None):
+    """Fetches Posts for a specific Page or Instagram Account."""
+    token = page_token or request.cookies.get("fb_token") or request.session.get("fb_access_token") or os.getenv("FB_ACCESS_TOKEN")
     if not token:
         return {"error": "not_authenticated"}
         
     async with httpx.AsyncClient() as client:
-        resp = await client.get(f"https://graph.facebook.com/v19.0/{page_id}/posts", params={
-            "access_token": token,
-            "fields": "id,message,created_time",
-            "limit": 20
-        })
-        return resp.json()
+        if platform == "instagram":
+            resp = await client.get(f"https://graph.facebook.com/v19.0/{page_id}/media", params={
+                "access_token": token,
+                "fields": "id,caption,timestamp",
+                "limit": 20
+            })
+            data = resp.json()
+            if "error" in data:
+                return data
+                
+            posts = []
+            for media in data.get("data", []):
+                posts.append({
+                    "id": media["id"],
+                    "message": media.get("caption", "[No Caption]"),
+                    "created_time": media.get("timestamp", "")
+                })
+            return {"data": posts}
+        else:
+            resp = await client.get(f"https://graph.facebook.com/v19.0/{page_id}/posts", params={
+                "access_token": token,
+                "fields": "id,message,created_time",
+                "limit": 20
+            })
+            return resp.json()
 
 @router.get("/api/live/debug")
 async def debug_live_fb(request: Request):
@@ -182,7 +246,8 @@ async def draw_winners(
     num_winners = int(data.get("num_winners", 1))
     
     # Grab the token from cookies
-    fb_token = request.cookies.get("fb_token") or request.session.get("fb_access_token")
+    page_token = data.get("page_token")
+    fb_token = page_token or request.cookies.get("fb_token") or request.session.get("fb_access_token")
 
     from app.services.giveaway import GiveawayService
     

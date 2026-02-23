@@ -18,9 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
 function switchPlatform(platform) {
     currentPlatform = platform;
     if (isLiveMode) {
-        // Facebook Graph API /me/accounts usually handles Pages mainly. 
-        // For Instagram, we'd need a specific Instagram Business Account flow.
-        // For now, reload pages if applicable or handle IG logic later.
+        const postSelector = document.getElementById('post-selector');
+        if (postSelector) {
+            postSelector.innerHTML = '<option value="" disabled>First select a page above...</option>';
+        }
         loadLivePages();
     } else {
         loadDemoPosts();
@@ -34,11 +35,11 @@ async function loadLivePages() {
     selector.innerHTML = '<option value="" disabled selected>Loading Pages...</option>';
 
     try {
-        const response = await fetch('/giveaways/api/live/pages', { credentials: 'include' });
+        const response = await fetch(`/giveaways/api/live/pages?platform=${currentPlatform}`, { credentials: 'include' });
         const data = await response.json();
 
         if (data.error) {
-            selector.innerHTML = `<option value="" disabled>Error: ${data.error}</option>`;
+            selector.innerHTML = `<option value="" disabled>Error: ${data.error.message || data.error}</option>`;
             return;
         }
 
@@ -47,11 +48,12 @@ async function loadLivePages() {
             data.data.forEach(page => {
                 const opt = document.createElement('option');
                 opt.value = page.id;
+                opt.dataset.token = page.access_token;
                 opt.textContent = page.name;
                 selector.appendChild(opt);
             });
         } else {
-            selector.innerHTML = '<option value="" disabled>No Pages found.</option>';
+            selector.innerHTML = `<option value="" disabled>No ${currentPlatform === 'instagram' ? 'Instagram Accounts connected to a Page' : 'Pages'} found.</option>`;
         }
     } catch (e) {
         console.error("Failed to load live pages", e);
@@ -62,13 +64,26 @@ async function loadLivePages() {
 // Global loadPagePosts function so it can be called from the HTML select onchange
 window.loadPagePosts = async function (pageId) {
     const selector = document.getElementById('post-selector');
+    const pageSelector = document.getElementById('page-selector');
+    const selectedPageOption = pageSelector.options[pageSelector.selectedIndex];
+    const pageToken = selectedPageOption ? selectedPageOption.dataset.token : null;
+
     selector.innerHTML = '<option value="" disabled>Loading Posts...</option>';
 
     try {
-        const response = await fetch(`/giveaways/api/live/posts/${pageId}`, { credentials: 'include' });
+        let url = `/giveaways/api/live/posts/${pageId}?platform=${currentPlatform}`;
+        if (pageToken) {
+            url += `&page_token=${encodeURIComponent(pageToken)}`;
+        }
+        const response = await fetch(url, { credentials: 'include' });
         const data = await response.json();
 
         selector.innerHTML = ''; // Clear for multi-select
+
+        if (data.error) {
+            selector.innerHTML = `<option value="" disabled>Error: ${data.error.message || data.error}</option>`;
+            return;
+        }
 
         if (data.data && data.data.length > 0) {
             data.data.forEach(post => {
@@ -129,6 +144,13 @@ async function startDraw() {
 
     const numWinners = parseInt(document.getElementById('num_winners').value);
 
+    const pageSelector = document.getElementById('page-selector');
+    let pageToken = null;
+    if (pageSelector && pageSelector.selectedIndex >= 0) {
+        const selectedPageOption = pageSelector.options[pageSelector.selectedIndex];
+        pageToken = selectedPageOption ? selectedPageOption.dataset.token : null;
+    }
+
     const filters = {
         filter_duplicates: document.getElementById('filter_duplicates').checked,
         include_replies: document.getElementById('include_replies') ? document.getElementById('include_replies').checked : false,
@@ -166,7 +188,8 @@ async function startDraw() {
                 platform: currentPlatform,
                 num_winners: numWinners,
                 filters: filters,
-                is_live: isLiveMode
+                is_live: isLiveMode,
+                page_token: pageToken
             })
         });
 

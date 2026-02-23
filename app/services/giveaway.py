@@ -18,43 +18,67 @@ class GiveawayService:
         if fb_token and not is_demo:
             async with httpx.AsyncClient() as client:
                 for post_id in post_ids:
-                    # 1. Fetch Comments
-                    resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/comments", params={
-                        "access_token": fb_token,
-                        "fields": "id,from,message,created_time,attachment",
-                        "filter": "stream" if filters.get("include_replies") else "toplevel",
-                        "summary": "1",
-                        "limit": 1000
-                    })
-                    data = resp.json()
-                    
-                    # 2. Fetch Likes if requested (Premium Filter)
-                    post_likers = set()
-                    if filters.get("require_like"):
-                        likes_resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/likes", params={
+                    if platform == "instagram":
+                        # 1. Fetch Instagram Comments
+                        resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/comments", params={
                             "access_token": fb_token,
+                            "fields": "id,username,text,timestamp",
                             "limit": 1000
                         })
-                        if likes_resp.status_code == 200:
-                            likes_data = likes_resp.json()
-                            if "data" in likes_data:
-                                post_likers = {like["id"] for like in likes_data["data"]}
-                    
-                    if "data" in data:
-                        for comment in data["data"]:
-                            from_user = comment.get("from", {})
-                            user_id = from_user.get("id", "unknown_id")
-                            user_name = from_user.get("name", "Unknown User")
-                            all_comments.append({
-                                "id": comment.get("id"),
-                                "user_id": user_id,
-                                "user_name": user_name,
-                                "profile_pic_url": f"https://ui-avatars.com/api/?name={user_name.split(' ')[0]}&background=random&color=fff",
-                                "text": comment.get("message", ""),
-                                "has_photo": "attachment" in comment and comment["attachment"].get("type") == "photo",
-                                "liked_post": user_id in post_likers if filters.get("require_like") else True,
-                                "timestamp": comment.get("created_time")
+                        data = resp.json()
+                        
+                        if "data" in data:
+                            for comment in data["data"]:
+                                # Instagram returns username directly in the root of the comment object
+                                user_name = comment.get("username", "Anonymous Instagram User")
+                                all_comments.append({
+                                    "id": comment.get("id"),
+                                    "user_id": user_name, # Username is unique on IG, acting as the ID for duplication logic
+                                    "user_name": user_name,
+                                    "profile_pic_url": f"https://ui-avatars.com/api/?name={user_name.split(' ')[0]}&background=random&color=fff",
+                                    "text": comment.get("text", ""),
+                                    "has_photo": False,
+                                    "liked_post": True,
+                                    "timestamp": comment.get("timestamp")
+                                })
+                    else:
+                        # 1. Fetch Facebook Comments
+                        resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/comments", params={
+                            "access_token": fb_token,
+                            "fields": "id,from,message,created_time,attachment",
+                            "filter": "stream" if filters.get("include_replies") else "toplevel",
+                            "summary": "1",
+                            "limit": 1000
+                        })
+                        data = resp.json()
+                        
+                        # 2. Fetch Facebook Likes if requested (Premium Filter)
+                        post_likers = set()
+                        if filters.get("require_like"):
+                            likes_resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/likes", params={
+                                "access_token": fb_token,
+                                "limit": 1000
                             })
+                            if likes_resp.status_code == 200:
+                                likes_data = likes_resp.json()
+                                if "data" in likes_data:
+                                    post_likers = {like["id"] for like in likes_data["data"]}
+                        
+                        if "data" in data:
+                            for comment in data["data"]:
+                                from_user = comment.get("from", {})
+                                user_id = from_user.get("id", "unknown_id")
+                                user_name = from_user.get("name", "Unknown User")
+                                all_comments.append({
+                                    "id": comment.get("id"),
+                                    "user_id": user_id,
+                                    "user_name": user_name,
+                                    "profile_pic_url": f"https://ui-avatars.com/api/?name={user_name.split(' ')[0]}&background=random&color=fff",
+                                    "text": comment.get("message", ""),
+                                    "has_photo": "attachment" in comment and comment["attachment"].get("type") == "photo",
+                                    "liked_post": user_id in post_likers if filters.get("require_like") else True,
+                                    "timestamp": comment.get("created_time")
+                                })
             return all_comments
         
         # --- DEMO MODE ---
