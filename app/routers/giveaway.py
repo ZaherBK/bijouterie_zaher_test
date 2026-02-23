@@ -125,6 +125,30 @@ async def get_live_posts(request: Request, page_id: str):
         })
         return resp.json()
 
+@router.get("/api/live/debug")
+async def debug_live_fb(request: Request):
+    """Endpoint for debugging Meta token issues."""
+    token = request.cookies.get("fb_token") or request.session.get("fb_access_token")
+    if not token:
+        return {"status": "error", "message": "No token found in cookies or session."}
+        
+    async with httpx.AsyncClient() as client:
+        # 1. Who am I?
+        me_resp = await client.get("https://graph.facebook.com/v19.0/me", params={"access_token": token})
+        
+        # 2. What permissions do I have?
+        perm_resp = await client.get("https://graph.facebook.com/v19.0/me/permissions", params={"access_token": token})
+        
+        # 3. What accounts do I have?
+        acc_resp = await client.get("https://graph.facebook.com/v19.0/me/accounts", params={"access_token": token})
+        
+        return {
+            "token_starts_with": token[:10] + "...",
+            "me": me_resp.json(),
+            "permissions": perm_resp.json(),
+            "accounts": acc_resp.json()
+        }
+
 
 # --- DEMO API ENDPOINTS ---
 
