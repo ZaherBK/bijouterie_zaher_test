@@ -62,38 +62,65 @@ async function loadLivePages() {
 }
 
 // Global loadPagePosts function so it can be called from the HTML select onchange
-window.loadPagePosts = async function (pageId) {
+window.loadPagePosts = async function (pageId, afterCursor = null) {
     const selector = document.getElementById('post-grid');
     const pageSelector = document.getElementById('page-selector');
     const selectedPageOption = pageSelector.options[pageSelector.selectedIndex];
     const pageToken = selectedPageOption ? selectedPageOption.dataset.token : null;
 
-    selector.innerHTML = '<div class="text-warning text-center p-4"><i class="bi bi-arrow-repeat spin"></i> Chargement des Posts...</div>';
+    const oldBtn = document.getElementById('load-more-btn');
+    if (oldBtn) oldBtn.remove();
+
+    if (!afterCursor) {
+        selector.innerHTML = '<div class="text-warning text-center p-4 w-100 col-12"><i class="bi bi-arrow-repeat spin"></i> Chargement des Posts...</div>';
+    } else {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'loading-more';
+        loadingDiv.className = 'text-warning text-center p-4 w-100 col-12';
+        loadingDiv.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Chargement supplémentaire...';
+        selector.appendChild(loadingDiv);
+    }
 
     try {
         let url = `/giveaways/api/live/posts/${pageId}?platform=${currentPlatform}`;
         if (pageToken) {
             url += `&page_token=${encodeURIComponent(pageToken)}`;
         }
+        if (afterCursor) {
+            url += `&after=${encodeURIComponent(afterCursor)}`;
+        }
+
         const response = await fetch(url, { credentials: 'include' });
         const data = await response.json();
 
-        selector.innerHTML = ''; // Clear for multi-select
+        if (!afterCursor) selector.innerHTML = '';
+        const loader = document.getElementById('loading-more');
+        if (loader) loader.remove();
 
         if (data.error) {
-            selector.innerHTML = `<div class="text-danger p-3">Erreur: ${data.error.message || data.error}</div>`;
+            selector.innerHTML += `<div class="text-danger p-3 w-100 col-12">Erreur: ${data.error.message || data.error}</div>`;
             return;
         }
 
         if (data.data && data.data.length > 0) {
             data.data.forEach(post => renderPostCard(post, selector));
+
+            // Generate Pagination Button if available
+            if (data.paging && data.paging.cursors && data.paging.cursors.after) {
+                const loadMoreBtn = document.createElement('button');
+                loadMoreBtn.id = 'load-more-btn';
+                loadMoreBtn.className = 'btn btn-outline-warning w-100 mt-3 col-12';
+                loadMoreBtn.innerHTML = '<i class="bi bi-arrow-down-circle"></i> Charger plus d\'anciennes publications...';
+                loadMoreBtn.onclick = () => window.loadPagePosts(pageId, data.paging.cursors.after);
+                selector.appendChild(loadMoreBtn);
+            }
         } else {
-            selector.innerHTML = '<div class="text-muted p-3">Aucune publication trouvée.</div>';
+            if (!afterCursor) selector.innerHTML = '<div class="text-muted p-3 w-100 col-12 text-center">Aucune publication trouvée.</div>';
         }
 
     } catch (e) {
         console.error("Failed to load page posts", e);
-        selector.innerHTML = '<div class="text-danger p-3">Erreur lors du chargement des publications</div>';
+        if (!afterCursor) selector.innerHTML = '<div class="text-danger p-3 w-100 col-12">Erreur lors du chargement des publications</div>';
     }
 }
 

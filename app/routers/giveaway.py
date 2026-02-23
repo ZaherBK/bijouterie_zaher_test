@@ -156,7 +156,7 @@ async def get_live_pages(request: Request, platform: str = "facebook"):
         return {"data": result}
 
 @router.get("/api/live/posts/{page_id}")
-async def get_live_posts(request: Request, page_id: str, platform: str = "facebook", page_token: str = None):
+async def get_live_posts(request: Request, page_id: str, platform: str = "facebook", page_token: str = None, after: str = None):
     """Fetches Posts for a specific Page or Instagram Account."""
     token = page_token or request.cookies.get("fb_token") or request.session.get("fb_access_token") or os.getenv("FB_ACCESS_TOKEN")
     if not token:
@@ -164,11 +164,15 @@ async def get_live_posts(request: Request, page_id: str, platform: str = "facebo
         
     async with httpx.AsyncClient() as client:
         if platform == "instagram":
-            resp = await client.get(f"https://graph.facebook.com/v19.0/{page_id}/media", params={
+            params = {
                 "access_token": token,
                 "fields": "id,caption,timestamp,media_url",
                 "limit": 20
-            })
+            }
+            if after:
+                params["after"] = after
+                
+            resp = await client.get(f"https://graph.facebook.com/v19.0/{page_id}/media", params=params)
             data = resp.json()
             if "error" in data:
                 return data
@@ -181,13 +185,17 @@ async def get_live_posts(request: Request, page_id: str, platform: str = "facebo
                     "created_time": media.get("timestamp", ""),
                     "picture": media.get("media_url", "")
                 })
-            return {"data": posts}
+            return {"data": posts, "paging": data.get("paging")}
         else:
-            resp = await client.get(f"https://graph.facebook.com/v19.0/{page_id}/posts", params={
+            params = {
                 "access_token": token,
                 "fields": "id,message,created_time,full_picture",
                 "limit": 20
-            })
+            }
+            if after:
+                params["after"] = after
+                
+            resp = await client.get(f"https://graph.facebook.com/v19.0/{page_id}/posts", params=params)
             data = resp.json()
             if "error" in data:
                 return data
@@ -200,7 +208,7 @@ async def get_live_posts(request: Request, page_id: str, platform: str = "facebo
                     "created_time": post.get("created_time", ""),
                     "picture": post.get("full_picture", "")
                 })
-            return {"data": posts}
+            return {"data": posts, "paging": data.get("paging")}
 
 @router.get("/api/live/debug")
 async def debug_live_fb(request: Request):
