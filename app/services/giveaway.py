@@ -22,7 +22,7 @@ class GiveawayService:
                         # 1. Fetch Instagram Comments
                         resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/comments", params={
                             "access_token": fb_token,
-                            "fields": "id,username,text,timestamp",
+                            "fields": "id,username,text,timestamp,like_count",
                             "limit": 1000
                         })
                         data = resp.json()
@@ -39,13 +39,14 @@ class GiveawayService:
                                     "text": comment.get("text", ""),
                                     "has_photo": False,
                                     "liked_post": True,
+                                    "like_count": comment.get("like_count", 0),
                                     "timestamp": comment.get("timestamp")
                                 })
                     else:
                         # 1. Fetch Facebook Comments
                         resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/comments", params={
                             "access_token": fb_token,
-                            "fields": "id,from,message,created_time,attachment",
+                            "fields": "id,from,message,created_time,attachment,like_count",
                             "filter": "stream" if filters.get("include_replies") else "toplevel",
                             "summary": "1",
                             "limit": 1000
@@ -77,6 +78,7 @@ class GiveawayService:
                                     "text": comment.get("message", ""),
                                     "has_photo": "attachment" in comment and comment["attachment"].get("type") == "photo",
                                     "liked_post": user_id in post_likers if filters.get("require_like") else True,
+                                    "like_count": comment.get("like_count", 0),
                                     "timestamp": comment.get("created_time")
                                 })
             return all_comments
@@ -133,72 +135,112 @@ class GiveawayService:
 
     @staticmethod
     def apply_filters(comments: List[Dict[str, Any]], filters: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Filters the comment list based on giveaway rules."""
+        """Filters the comment list based on advanced giveaway rules."""
         filtered = comments
 
-        # 1. Filter Mentions (Require minimum number of @mentions)
+        # 1. Exclude Users
+        excluded_users_str = filters.get("excluded_users", "")
+        if excluded_users_str:
+            excluded = [u.strip().lower() for u in excluded_users_str.split(",") if u.strip()]
+            if excluded:
+                filtered = [c for c in filtered if c.get("user_name", "").lower() not in excluded and c.get("user_id", "").lower() not in excluded]
+
+        # 2. Minimum Comment Likes
+        min_likes = filters.get("min_comment_likes", 0)
+        if min_likes > 0:
+            filtered = [c for c in filtered if c.get("like_count", 0) >= min_likes]
+
+        # 3. Filter Mentions (Require minimum number of @mentions)
         min_mentions = filters.get("min_mentions", 0)
         if min_mentions > 0:
             mention_filtered = []
             for c in filtered:
-                # Count instances of '@' followed by word characters
                 mentions_count = len(re.findall(r'@\w+', c["text"]))
                 if mentions_count >= min_mentions:
                     mention_filtered.append(c)
             filtered = mention_filtered
             
-        # 3. Filter by Specific Word / Hashtag
+        # 4. Filter by Specific Word / Hashtag
         required_word = filters.get("required_word", "").strip().lower()
         if required_word:
             word_filtered = []
-            
-            # Allow multiple conditions separated by commas or use the full word directly
             conditions = [req.strip() for req in required_word.split(",")] if "," in required_word else [required_word]
-            
             for c in filtered:
                 comment_text = c["text"].lower()
-                
-                # If ANY of the conditions exist in the comment, keep it!
                 if any(cond in comment_text for cond in conditions):
                     word_filtered.append(c)
             filtered = word_filtered
 
-        # 4. Filter by Photo requirement
+        # 5. Filter by Photo requirement
         if filters.get("require_photo"):
             filtered = [c for c in filtered if c.get("has_photo")]
 
-        # 5. Filter by Date Limit
-        date_limit_str = filters.get("date_limit")
-        if date_limit_str:
-            try:
-                limit_dt = datetime.strptime(date_limit_str, "%Y-%m-%d").date()
-                date_filtered = []
-                for c in filtered:
-                    c_time_str = c.get("timestamp")
-                    if c_time_str:
+        # 6. Filter by Date Range
+        start_date_str = filters.get("start_date")
+        end_date_str = filters.get("end_date")
+        if start_date_str or end_date_str:
+            start_dt = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else None
+            end_dt = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else None
+            
+            date_filtered = []
+            for c in filtered:
+                c_time_str = c.get("timestamp")
+                if c_time_str:
+                    try:
                         c_date = datetime.strptime(c_time_str[:10], "%Y-%m-%d").date()
-                        if c_date >= limit_dt:
-                            date_filtered.append(c)
-                filtered = date_filtered
-            except Exception:
-                pass
+                        if start_dt and c_date < start_dt:
+                            continue
+                        if end_dt and c_date > end_dt:
+                            continue
+                        date_filtered.append(c)
+                    except Exception:
+                        pass
+            filtered = date_filtered
 
-        # 6. Filter by Required Like
+        # 7. Filter by Required Like
         if filters.get("require_like"):
-            # Check the boolean flag we set during fetch
             filtered = [c for c in filtered if c.get("liked_post", False)]
 
-        # 7. VERY LAST STEP: Filter Duplicates (Keep only 1 entry per user based on user_id)
-        # This is critical to run last so we don't accidentally discard a user's winning comment that has the right hashtag
-        # just because their first comment lacked it!
+        # 8. Enforce Entry Limits & Apply Extra Entries
         if filters.get("filter_duplicates"):
-            seen_users = set()
-            unique_comments = []
-            for c in filtered:
-                if c["user_id"] not in seen_users:
-                    unique_comments.append(c)
-                    seen_users.add(c["user_id"])
-            filtered = unique_comments
+            max_entries = 1
+        else:
+            max_entries = filters.get("max_entries_per_user")
+            if max_entries is None or max_entries <= 0:
+                max_entries = float('inf')
+
+        user_counts = {}
+        limited_comments = []
+        for c in filtered:
+            uid = c["user_id"]
+            user_counts[uid] = user_counts.get(uid, 0) + 1
+            if user_counts[uid] <= max_entries:
+                limited_comments.append(c)
+                
+        filtered = limited_comments
+
+        # 9. Extra Entries
+        extra_entries_str = filters.get("extra_entries", "")
+        if extra_entries_str:
+            vip_users = [u.strip().lower() for u in extra_entries_str.split(",") if u.strip()]
+            if vip_users:
+                from collections import Counter
+                vip_counts = Counter(vip_users)
+                
+                extra_comments = []
+                seen_vip_uids = set()
+                
+                for c in filtered:
+                    uname = c.get("user_name", "").lower()
+                    uid = c.get("user_id", "").lower()
+                    
+                    if uid not in seen_vip_uids:
+                        bonus = vip_counts.get(uname, 0) or vip_counts.get(uid, 0)
+                        if bonus > 0:
+                            extra_comments.extend([c] * bonus)
+                            seen_vip_uids.add(uid)
+                            
+                filtered.extend(extra_comments)
 
         random.shuffle(filtered)
         return filtered

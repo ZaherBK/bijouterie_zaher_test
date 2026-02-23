@@ -239,9 +239,14 @@ async function startDraw() {
         include_replies: document.getElementById('include_replies') ? document.getElementById('include_replies').checked : false,
         require_photo: document.getElementById('require_photo') ? document.getElementById('require_photo').checked : false,
         require_like: document.getElementById('require_like') ? document.getElementById('require_like').checked : false,
-        date_limit: document.getElementById('filter_date_toggle') && document.getElementById('filter_date_toggle').checked ? document.getElementById('date_limit').value : null,
-        min_mentions: parseInt(document.getElementById('min_mentions').value),
-        required_word: document.getElementById('required_word').value
+        start_date: document.getElementById('filter_date_toggle') && document.getElementById('filter_date_toggle').checked ? document.getElementById('start_date').value : null,
+        end_date: document.getElementById('filter_date_toggle') && document.getElementById('filter_date_toggle').checked ? document.getElementById('end_date').value : null,
+        min_mentions: parseInt(document.getElementById('min_mentions').value) || 0,
+        required_word: document.getElementById('required_word').value,
+        min_comment_likes: parseInt(document.getElementById('min_comment_likes').value) || 0,
+        max_entries_per_user: parseInt(document.getElementById('max_entries_per_user').value) || null,
+        excluded_users: document.getElementById('excluded_users').value.trim(),
+        extra_entries: document.getElementById('extra_entries').value.trim()
     };
 
     // 1. Show Slot Machine Overlay
@@ -262,6 +267,8 @@ async function startDraw() {
     // 2. Send API Request (Modify backend to accept list of post_ids)
     try {
         isRunning = true;
+        const animationDuration = parseInt(document.getElementById('animation_duration').value) || 5;
+
         const response = await fetch('/giveaways/api/draw', {
             method: 'POST',
             credentials: 'include',
@@ -280,7 +287,7 @@ async function startDraw() {
 
         if (data.winners && data.winners.length > 0) {
             title.textContent = "SÉLECTION DU GAGNANT EN COURS...";
-            await runSlotAnimation(data.winners);
+            await runSlotAnimation(data.winners, animationDuration);
             showResults(data.winners);
         } else {
             alert("Aucun participant ne correspond à vos filtres !");
@@ -296,7 +303,7 @@ async function startDraw() {
     }
 }
 
-function runSlotAnimation(winners) {
+function runSlotAnimation(winners, durationSec = 5) {
     return new Promise(resolve => {
         const reel = document.getElementById('slot-reel');
         // Add fake names
@@ -328,13 +335,13 @@ function runSlotAnimation(winners) {
         // Trigger reflow
         void reel.offsetWidth;
 
-        // Spin for 4 seconds
-        reel.style.transition = 'transform 4s cubic-bezier(0.15, 0.85, 0.25, 1)';
+        // Spin for X seconds
+        reel.style.transition = `transform ${durationSec}s cubic-bezier(0.15, 0.85, 0.25, 1)`;
         reel.style.transform = `translateY(-${stopPosition}px)`;
 
         setTimeout(() => {
             resolve();
-        }, 4500); // 4s animation + 0.5s pause to read the name
+        }, (durationSec * 1000) + 500); // Xs animation + 0.5s pause to read the name
     });
 }
 

@@ -153,13 +153,17 @@
                             </div>
                             <div class="form-check form-switch mb-2">
                                 <input class="form-check-input" type="checkbox" id="filter_date_toggle"
-                                    onchange="document.getElementById('date_limit_wrapper').style.display = this.checked ? 'block' : 'none'">
+                                    onchange="document.getElementById('date_range_wrapper').style.display = this.checked ? 'block' : 'none'">
                                 <label class="form-check-label text-light" for="filter_date_toggle">Filtrer par date
                                     limite</label>
                             </div>
-                            <div id="date_limit_wrapper" style="display: none;" class="mt-2">
-                                <input type="date" id="date_limit" class="form-control form-control-sm premium-input"
-                                    title="Date Limite">
+                            <div id="date_range_wrapper" style="display: none;" class="mt-2">
+                                <div class="d-flex gap-2">
+                                    <input type="date" id="start_date"
+                                        class="form-control form-control-sm premium-input" title="Date de Début">
+                                    <input type="date" id="end_date" class="form-control form-control-sm premium-input"
+                                        title="Date de Fin">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -181,16 +185,56 @@
                         </div>
                     </div>
 
-                    <!-- Raffle Settings -->
-                    <h6 class="text-warning mb-3 mt-4 border-bottom border-secondary pb-2">Paramètres des Gagnants</h6>
-                    <div class="row align-items-center">
+                    <div class="row mb-3 align-items-center">
                         <div class="col-md-6">
-                            <label class="form-label text-light">Nombre de Gagnants</label>
+                            <label class="form-label text-light mb-1">Minimum de Likes (Commentaire)</label>
+                            <input type="number" id="min_comment_likes" class="form-control premium-input" value="0"
+                                min="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-light mb-1">Max d'entrées / participant (💡 si Ignorer
+                                doublons est off)</label>
+                            <input type="number" id="max_entries_per_user" class="form-control premium-input"
+                                placeholder="ex: 5 (vide = illimité)" min="1">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-light mb-1">Exclure des Utilisateurs <span
+                                    class="badge bg-secondary ms-1" style="font-size:0.6rem;">Noms séparés par
+                                    virgule</span></label>
+                            <textarea id="excluded_users" class="form-control premium-input" rows="2"
+                                placeholder="ex: admin, spammer"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-light mb-1">Entrées Supplémentaires <span
+                                    class="badge bg-warning text-dark ms-1" style="font-size:0.6rem;">Noms
+                                    VIP</span></label>
+                            <textarea id="extra_entries" class="form-control premium-input" rows="2"
+                                placeholder="ex: vip_user1, vip_user2"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Raffle Settings -->
+                    <h6 class="text-warning mb-3 mt-4 border-bottom border-secondary pb-2">Paramètres des Gagnants &
+                        Résultats</h6>
+                    <div class="row align-items-end mb-3">
+                        <div class="col-md-4 mb-3 mb-md-0">
+                            <label class="form-label text-light mb-1">Nombre de Gagnants</label>
                             <input type="number" id="num_winners" class="form-control premium-input" value="1" min="1"
                                 max="10">
                         </div>
-                        <div class="col-md-6 text-end mt-4">
-                            <button class="btn btn-warning btn-lg fw-bold px-5 magic-button" onclick="startDraw()">
+                        <div class="col-md-4 mb-3 mb-md-0">
+                            <label class="form-label text-light mb-1">Durée de l'Animation</label>
+                            <select id="animation_duration" class="form-select premium-input">
+                                <option value="3">3 Secondes</option>
+                                <option value="5" selected>5 Secondes</option>
+                                <option value="10">10 Secondes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button class="btn btn-warning btn-lg fw-bold w-100 magic-button" onclick="startDraw()">
                                 <i class="bi bi-play-circle-fill me-2"></i> LANCER LE TIRAGE
                             </button>
                         </div>
