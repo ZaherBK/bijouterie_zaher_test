@@ -131,6 +131,10 @@ async function startDraw() {
 
     const filters = {
         filter_duplicates: document.getElementById('filter_duplicates').checked,
+        include_replies: document.getElementById('include_replies') ? document.getElementById('include_replies').checked : false,
+        require_photo: document.getElementById('require_photo') ? document.getElementById('require_photo').checked : false,
+        require_like: document.getElementById('require_like') ? document.getElementById('require_like').checked : false,
+        date_limit: document.getElementById('filter_date_toggle') && document.getElementById('filter_date_toggle').checked ? document.getElementById('date_limit').value : null,
         min_mentions: parseInt(document.getElementById('min_mentions').value),
         required_word: document.getElementById('required_word').value
     };

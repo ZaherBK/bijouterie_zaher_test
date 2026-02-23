@@ -83,14 +83,23 @@ async def facebook_callback(request: Request, code: str = None, error: str = Non
         if "access_token" in data:
             # Store safely in session
             request.session["fb_access_token"] = data["access_token"]
-            return RedirectResponse(url="/giveaways/?success=connected")
+            response = RedirectResponse(url="/giveaways/?success=connected")
+            response.set_cookie(
+                key="fb_token", 
+                value=data["access_token"], 
+                httponly=True, 
+                secure=True, 
+                samesite='lax',
+                max_age=3600*24*60
+            )
+            return response
             
     return RedirectResponse(url="/giveaways/?error=token_exchange_failed")
 
 @router.get("/api/live/pages")
 async def get_live_pages(request: Request):
     """Fetches Facebook Pages the user manages."""
-    token = request.session.get("fb_access_token") or os.getenv("FB_ACCESS_TOKEN")
+    token = request.cookies.get("fb_token") or request.session.get("fb_access_token") or os.getenv("FB_ACCESS_TOKEN")
     if not token:
         return {"error": "not_authenticated"}
         
@@ -104,7 +113,7 @@ async def get_live_pages(request: Request):
 @router.get("/api/live/posts/{page_id}")
 async def get_live_posts(request: Request, page_id: str):
     """Fetches Posts for a specific Page."""
-    token = request.session.get("fb_access_token") or os.getenv("FB_ACCESS_TOKEN")
+    token = request.cookies.get("fb_token") or request.session.get("fb_access_token") or os.getenv("FB_ACCESS_TOKEN")
     if not token:
         return {"error": "not_authenticated"}
         
@@ -120,6 +129,14 @@ async def get_live_posts(request: Request, page_id: str):
 # --- DEMO API ENDPOINTS ---
 
 @router.get("/api/demo/posts")
+async def demo_posts():
+    """Returns placeholder demo posts."""
+    return [
+        {"id": "demo_1", "text": "Post promotionnel de test", "date": "2024-05-10", "platform": "facebook"},
+        {"id": "demo_2", "text": "Concours Saint Valentin", "date": "2024-02-14", "platform": "facebook"}
+    ]
+
+@router.post("/api/draw")
 async def draw_winners(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -131,22 +148,28 @@ async def draw_winners(
     In Demo Mode: Uses a simulated pool of comments.
     """
     data = await request.json()
-    post_id = data.get("post_id")
+    
+    # Handle both single and array of post IDs
+    post_ids = data.get("post_ids", [])
+    if "post_id" in data and not post_ids:
+        post_ids = [data["post_id"]]
+        
     platform = data.get("platform", "facebook")
     num_winners = int(data.get("num_winners", 1))
     
-    # filters = data.get("filters", {})
-    # e.g., filter_duplicates, filter_mentions
+    # Grab the token from cookies
+    fb_token = request.cookies.get("fb_token") or request.session.get("fb_access_token")
 
     from app.services.giveaway import GiveawayService
     
     # We will build this service next.
     winners = await GiveawayService.draw_winners(
         db=db,
-        post_id=post_id,
+        post_ids=post_ids,
         platform=platform,
         num_winners=num_winners,
-        filters=data.get("filters", {})
+        filters=data.get("filters", {}),
+        fb_token=fb_token
     )
     
     return {"status": "success", "winners": winners}

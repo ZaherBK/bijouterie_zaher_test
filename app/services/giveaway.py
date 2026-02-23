@@ -10,39 +10,49 @@ import httpx
 
 class GiveawayService:
     @staticmethod
-    async def fetch_comments(post_ids: List[str], platform: str, fb_token: str = None) -> List[Dict[str, Any]]:
-        """
-        Fetches comments from the Meta Graph API if keys exist.
-        Aggregate comments from MULTIPLE posts if requested.
-        Otherwise, returns a robust set of simulated comments for the Demo.
-        """
+    async def fetch_comments(post_ids: List[str], platform: str, fb_token: str = None, filters: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        if filters is None: filters = {}
         all_comments = []
-        
         is_demo = any("demo" in p or "post_" in p for p in post_ids)
         
         if fb_token and not is_demo:
-            # Live API Mode - aggregate from all selected posts
             async with httpx.AsyncClient() as client:
                 for post_id in post_ids:
-                    # Fetch comments for this post
+                    # 1. Fetch Comments
                     resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/comments", params={
                         "access_token": fb_token,
-                        "fields": "id,from,message,created_time",
-                        "summary": "1", # Get total count if needed
-                        "limit": 100    # Page through if necessary, keeping simple for now
+                        "fields": "id,from,message,created_time,attachment",
+                        "filter": "stream" if filters.get("include_replies") else "toplevel",
+                        "summary": "1",
+                        "limit": 1000
                     })
                     data = resp.json()
+                    
+                    # 2. Fetch Likes if requested (Premium Filter)
+                    post_likers = set()
+                    if filters.get("require_like"):
+                        likes_resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/likes", params={
+                            "access_token": fb_token,
+                            "limit": 1000
+                        })
+                        if likes_resp.status_code == 200:
+                            likes_data = likes_resp.json()
+                            if "data" in likes_data:
+                                post_likers = {like["id"] for like in likes_data["data"]}
                     
                     if "data" in data:
                         for comment in data["data"]:
                             from_user = comment.get("from", {})
+                            user_id = from_user.get("id", "unknown_id")
                             user_name = from_user.get("name", "Unknown User")
                             all_comments.append({
                                 "id": comment.get("id"),
-                                "user_id": from_user.get("id", "unknown_id"),
+                                "user_id": user_id,
                                 "user_name": user_name,
                                 "profile_pic_url": f"https://ui-avatars.com/api/?name={user_name.split(' ')[0]}&background=random&color=fff",
                                 "text": comment.get("message", ""),
+                                "has_photo": "attachment" in comment and comment["attachment"].get("type") == "photo",
+                                "liked_post": user_id in post_likers if filters.get("require_like") else True,
                                 "timestamp": comment.get("created_time")
                             })
             return all_comments
@@ -133,6 +143,31 @@ class GiveawayService:
                     word_filtered.append(c)
             filtered = word_filtered
 
+        # 4. Filter by Photo requirement
+        if filters.get("require_photo"):
+            filtered = [c for c in filtered if c.get("has_photo")]
+
+        # 5. Filter by Date Limit
+        date_limit_str = filters.get("date_limit")
+        if date_limit_str:
+            try:
+                limit_dt = datetime.strptime(date_limit_str, "%Y-%m-%d").date()
+                date_filtered = []
+                for c in filtered:
+                    c_time_str = c.get("timestamp")
+                    if c_time_str:
+                        c_date = datetime.strptime(c_time_str[:10], "%Y-%m-%d").date()
+                        if c_date >= limit_dt:
+                            date_filtered.append(c)
+                filtered = date_filtered
+            except Exception:
+                pass
+
+        # 6. Filter by Required Like
+        if filters.get("require_like"):
+            # Check the boolean flag we set during fetch
+            filtered = [c for c in filtered if c.get("liked_post", False)]
+
         return filtered
 
     @staticmethod
@@ -140,7 +175,7 @@ class GiveawayService:
         """
         Executes the full Giveaway pipeline: Fetch -> Filter -> Draw.
         """
-        raw_comments = await GiveawayService.fetch_comments(post_ids, platform, fb_token)
+        raw_comments = await GiveawayService.fetch_comments(post_ids, platform, fb_token, filters)
         
         eligible_comments = GiveawayService.apply_filters(raw_comments, filters)
         
