@@ -34,7 +34,7 @@ async function loadLivePages() {
     selector.innerHTML = '<option value="" disabled selected>Loading Pages...</option>';
 
     try {
-        const response = await fetch('/giveaways/api/live/pages');
+        const response = await fetch('/giveaways/api/live/pages', { credentials: 'include' });
         const data = await response.json();
 
         if (data.error) {
@@ -65,7 +65,7 @@ window.loadPagePosts = async function (pageId) {
     selector.innerHTML = '<option value="" disabled>Loading Posts...</option>';
 
     try {
-        const response = await fetch(`/giveaways/api/live/posts/${pageId}`);
+        const response = await fetch(`/giveaways/api/live/posts/${pageId}`, { credentials: 'include' });
         const data = await response.json();
 
         selector.innerHTML = ''; // Clear for multi-select
@@ -155,6 +155,7 @@ async function startDraw() {
         isRunning = true;
         const response = await fetch('/giveaways/api/draw', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 post_ids: postIds, // <--- MODIFIED to send array
