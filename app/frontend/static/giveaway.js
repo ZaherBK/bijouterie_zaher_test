@@ -122,7 +122,10 @@ function renderPostCard(post, container) {
     const card = document.createElement('div');
     card.className = 'post-item card text-white bg-dark mb-2 position-relative overflow-hidden cursor-pointer';
     card.dataset.id = post.id;
-    card.onclick = () => card.classList.toggle('selected');
+    card.onclick = () => {
+        card.classList.toggle('selected');
+        updateSelectionSummary(); // Livupdate modal footer
+    };
 
     // Add glowing border class on selection state change handled by CSS
 
@@ -133,22 +136,39 @@ function renderPostCard(post, container) {
     const imgUrl = post.picture || 'https://placehold.co/100x100/1e2130/ffffff?text=No+Image';
 
     card.innerHTML = `
-        <div class="row g-0 align-items-center">
-            <div class="col-auto">
-                <img src="${imgUrl}" alt="Post image" class="post-item-img img-fluid rounded-start">
-            </div>
-            <div class="col">
-                <div class="card-body py-2 px-3">
-                    <p class="card-text mb-1 small-text text-light">${snippet}</p>
-                    <p class="card-text"><small class="text-warning"><i class="bi bi-calendar-event"></i> ${dateFormatted}</small></p>
-                </div>
-            </div>
-            <div class="selection-indicator">
-                <i class="bi bi-check-circle-fill fs-3"></i>
-            </div>
+        <img src="${imgUrl}" alt="Post image" class="post-item-img">
+        <div class="card-body py-2 px-3">
+            <p class="card-text mb-1 small-text text-light">${snippet}</p>
+            <p class="card-text mt-2"><small class="text-warning"><i class="bi bi-calendar-event"></i> ${dateFormatted}</small></p>
+        </div>
+        <div class="selection-indicator">
+            <i class="bi bi-check-circle-fill fs-3"></i>
         </div>
     `;
     container.appendChild(card);
+}
+
+function openPostModal() {
+    const modal = new bootstrap.Modal(document.getElementById('postsModal'));
+    modal.show();
+}
+
+function updateSelectionSummary() {
+    const selectedCount = document.querySelectorAll('.post-item.selected').length;
+
+    // Update trigger button outside modal
+    const summarySpan = document.getElementById('selection-summary');
+    if (summarySpan) {
+        summarySpan.textContent = selectedCount === 0 ? '0 publication sélectionnée' :
+            `${selectedCount} publication${selectedCount > 1 ? 's' : ''} sélectionnée${selectedCount > 1 ? 's' : ''}`;
+    }
+
+    // Update footer inside modal
+    const modalFooterSpan = document.getElementById('modal-selection-count');
+    if (modalFooterSpan) {
+        modalFooterSpan.textContent = selectedCount === 0 ? '0 sélectionnée' :
+            `${selectedCount} sélectionnée${selectedCount > 1 ? 's' : ''}`;
+    }
 }
 
 window.selectAllPosts = function () {
@@ -162,6 +182,8 @@ window.selectAllPosts = function () {
             p.classList.add('selected');
         }
     });
+
+    updateSelectionSummary();
 }
 
 async function startDraw() {

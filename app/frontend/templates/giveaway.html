@@ -106,14 +106,20 @@
                     <div class="row mb-4">
                         <label class="col-sm-3 col-form-label text-light fw-bold fs-6">2. Sélectionner les Posts</label>
                         <div class="col-sm-9">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="text-muted small">Sélectionnez une ou plusieurs publications pour le tirage
-                                    (Les commentaires seront combinés).</span>
-                                <button class="btn btn-sm btn-outline-warning" onclick="selectAllPosts()">Tout
-                                    Sélectionner</button>
-                            </div>
-                            <div id="post-grid" class="post-grid custom-scrollbar">
-                                <div class="text-muted text-center p-4">En attente des publications...</div>
+                            <div class="premium-post-trigger" onclick="openPostModal()">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <div class="icon-circle bg-warning text-dark me-3">
+                                            <i class="bi bi-collection-play-fill fs-5"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0 text-white">Choisir les Publications</h6>
+                                            <small id="selection-summary" class="text-warning fw-bold">0 publication
+                                                sélectionnée</small>
+                                        </div>
+                                    </div>
+                                    <i class="bi bi-chevron-right text-muted"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -210,6 +216,44 @@
         </div>
     </div>
 </main>
+
+<!-- Premium Posts Modal -->
+<div class="modal fade glass-modal" id="postsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content premium-modal-content">
+            <div class="modal-header border-bottom border-secondary p-4 pb-3">
+                <h5 class="modal-title text-white fw-bold"><i class="bi bi-grid-3x3-gap-fill text-warning me-2"></i>
+                    Sélection des Publications</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4 custom-scrollbar bg-dark-subtle">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted small">Cliquez sur les publications que vous souhaitez inclure dans le
+                        tirage. Les commentaires seront fusionnés.</span>
+                    <button class="btn btn-sm btn-outline-warning fw-bold" onclick="selectAllPosts()"><i
+                            class="bi bi-check-all"></i> Tout Sélectionner</button>
+                </div>
+
+                <div id="post-grid" class="post-gallery-grid">
+                    <div class="text-muted text-center p-5 w-100 col-12">
+                        <i class="bi bi-inbox fs-1 d-block mb-3 opacity-50"></i>
+                        Veuillez d'abord sélectionner une page dans les paramètres.
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer border-top border-secondary p-3">
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                    <div id="modal-selection-count" class="text-warning fw-bold">0 sélectionnée</div>
+                    <button type="button" class="btn btn-warning fw-bold px-4" data-bs-dismiss="modal"
+                        onclick="updateSelectionSummary()">Valider la Sélection</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Fullscreen Overlay Animation (Slot Machine) -->
 <div id="slot-machine-overlay" class="slot-overlay d-flex justify-content-center align-items-center"
