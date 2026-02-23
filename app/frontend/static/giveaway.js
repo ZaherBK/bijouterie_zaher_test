@@ -18,9 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function switchPlatform(platform) {
     currentPlatform = platform;
     if (isLiveMode) {
-        const postSelector = document.getElementById('post-selector');
-        if (postSelector) {
-            postSelector.innerHTML = '<option value="" disabled>First select a page above...</option>';
+        const postGrid = document.getElementById('post-grid');
+        if (postGrid) {
+            postGrid.innerHTML = '<div class="text-muted text-center p-4">Sélectionnez d\'abord une page ci-dessus...</div>';
         }
         loadLivePages();
     } else {
@@ -63,12 +63,12 @@ async function loadLivePages() {
 
 // Global loadPagePosts function so it can be called from the HTML select onchange
 window.loadPagePosts = async function (pageId) {
-    const selector = document.getElementById('post-selector');
+    const selector = document.getElementById('post-grid');
     const pageSelector = document.getElementById('page-selector');
     const selectedPageOption = pageSelector.options[pageSelector.selectedIndex];
     const pageToken = selectedPageOption ? selectedPageOption.dataset.token : null;
 
-    selector.innerHTML = '<option value="" disabled>Loading Posts...</option>';
+    selector.innerHTML = '<div class="text-warning text-center p-4"><i class="bi bi-arrow-repeat spin"></i> Chargement des Posts...</div>';
 
     try {
         let url = `/giveaways/api/live/posts/${pageId}?platform=${currentPlatform}`;
@@ -81,34 +81,27 @@ window.loadPagePosts = async function (pageId) {
         selector.innerHTML = ''; // Clear for multi-select
 
         if (data.error) {
-            selector.innerHTML = `<option value="" disabled>Error: ${data.error.message || data.error}</option>`;
+            selector.innerHTML = `<div class="text-danger p-3">Erreur: ${data.error.message || data.error}</div>`;
             return;
         }
 
         if (data.data && data.data.length > 0) {
-            data.data.forEach(post => {
-                const opt = document.createElement('option');
-                opt.value = post.id;
-                const msg = post.message ? post.message.substring(0, 50) + "..." : "[No Text]";
-                const dt = new Date(post.created_time).toLocaleDateString();
-                opt.textContent = `${dt} - ${msg}`;
-                selector.appendChild(opt);
-            });
+            data.data.forEach(post => renderPostCard(post, selector));
         } else {
-            selector.innerHTML = '<option value="" disabled>No Posts found.</option>';
+            selector.innerHTML = '<div class="text-muted p-3">Aucune publication trouvée.</div>';
         }
 
     } catch (e) {
         console.error("Failed to load page posts", e);
-        selector.innerHTML = '<option value="" disabled>Error loading posts</option>';
+        selector.innerHTML = '<div class="text-danger p-3">Erreur lors du chargement des publications</div>';
     }
 }
 
 async function loadDemoPosts() {
-    const selector = document.getElementById('post-selector');
+    const selector = document.getElementById('post-grid');
     if (!selector) return;
 
-    selector.innerHTML = '<option value="" disabled>Loading...</option>';
+    selector.innerHTML = '<div class="text-warning text-center p-4"><i class="bi bi-arrow-repeat spin"></i> Chargement de la démo...</div>';
 
     try {
         const response = await fetch('/giveaways/api/demo/posts');
@@ -116,29 +109,70 @@ async function loadDemoPosts() {
 
         selector.innerHTML = '';
         posts.filter(p => p.platform === currentPlatform).forEach(post => {
-            const opt = document.createElement('option');
-            opt.value = post.id;
-            opt.textContent = `${post.date} - ${post.text.substring(0, 50)}...`;
-            selector.appendChild(opt);
+            renderPostCard(post, selector);
         });
 
     } catch (e) {
         console.error("Failed to load posts", e);
-        selector.innerHTML = '<option value="" disabled>Error loading posts</option>';
+        selector.innerHTML = '<div class="text-danger p-3">Erreur lors du chargement de la démo</div>';
     }
+}
+
+function renderPostCard(post, container) {
+    const card = document.createElement('div');
+    card.className = 'post-item card text-white bg-dark mb-2 position-relative overflow-hidden cursor-pointer';
+    card.dataset.id = post.id;
+    card.onclick = () => card.classList.toggle('selected');
+
+    // Add glowing border class on selection state change handled by CSS
+
+    const msg = post.message || post.text || "[Publication sans texte]";
+    const snippet = msg.length > 80 ? msg.substring(0, 80) + "..." : msg;
+    const dt = post.created_time || post.date || "";
+    const dateFormatted = dt ? new Date(dt).toLocaleDateString() : "";
+    const imgUrl = post.picture || 'https://placehold.co/100x100/1e2130/ffffff?text=No+Image';
+
+    card.innerHTML = `
+        <div class="row g-0 align-items-center">
+            <div class="col-auto">
+                <img src="${imgUrl}" alt="Post image" class="post-item-img img-fluid rounded-start">
+            </div>
+            <div class="col">
+                <div class="card-body py-2 px-3">
+                    <p class="card-text mb-1 small-text text-light">${snippet}</p>
+                    <p class="card-text"><small class="text-warning"><i class="bi bi-calendar-event"></i> ${dateFormatted}</small></p>
+                </div>
+            </div>
+            <div class="selection-indicator">
+                <i class="bi bi-check-circle-fill fs-3"></i>
+            </div>
+        </div>
+    `;
+    container.appendChild(card);
+}
+
+window.selectAllPosts = function () {
+    const posts = document.querySelectorAll('.post-item');
+    const allSelected = Array.from(posts).every(p => p.classList.contains('selected'));
+
+    posts.forEach(p => {
+        if (allSelected) {
+            p.classList.remove('selected');
+        } else {
+            p.classList.add('selected');
+        }
+    });
 }
 
 async function startDraw() {
     if (isRunning) return;
 
-    const postSelector = document.getElementById('post-selector');
-
-    // Get all selected options
-    const selectedOptions = Array.from(postSelector.selectedOptions);
-    const postIds = selectedOptions.map(opt => opt.value);
+    // Get all selected options visually
+    const selectedCards = document.querySelectorAll('.post-item.selected');
+    const postIds = Array.from(selectedCards).map(card => card.dataset.id);
 
     if (postIds.length === 0 || postIds[0] === "") {
-        alert("Veuillez sélectionner au moins un post.");
+        alert("Veuillez sélectionner au moins une publication (Cliquez sur la carte) !");
         return;
     }
 

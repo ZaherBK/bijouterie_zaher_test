@@ -158,12 +158,18 @@ class GiveawayService:
             filtered = mention_filtered
             
         # 3. Filter by Specific Word / Hashtag
-        required_word = filters.get("required_word", "").strip()
+        required_word = filters.get("required_word", "").strip().lower()
         if required_word:
             word_filtered = []
+            
+            # Allow multiple conditions separated by commas or use the full word directly
+            conditions = [req.strip() for req in required_word.split(",")] if "," in required_word else [required_word]
+            
             for c in filtered:
-                # Case insensitive search
-                if required_word.lower() in c["text"].lower():
+                comment_text = c["text"].lower()
+                
+                # If ANY of the conditions exist in the comment, keep it!
+                if any(cond in comment_text for cond in conditions):
                     word_filtered.append(c)
             filtered = word_filtered
 

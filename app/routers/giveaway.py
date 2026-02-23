@@ -166,7 +166,7 @@ async def get_live_posts(request: Request, page_id: str, platform: str = "facebo
         if platform == "instagram":
             resp = await client.get(f"https://graph.facebook.com/v19.0/{page_id}/media", params={
                 "access_token": token,
-                "fields": "id,caption,timestamp",
+                "fields": "id,caption,timestamp,media_url",
                 "limit": 20
             })
             data = resp.json()
@@ -178,16 +178,29 @@ async def get_live_posts(request: Request, page_id: str, platform: str = "facebo
                 posts.append({
                     "id": media["id"],
                     "message": media.get("caption", "[No Caption]"),
-                    "created_time": media.get("timestamp", "")
+                    "created_time": media.get("timestamp", ""),
+                    "picture": media.get("media_url", "")
                 })
             return {"data": posts}
         else:
             resp = await client.get(f"https://graph.facebook.com/v19.0/{page_id}/posts", params={
                 "access_token": token,
-                "fields": "id,message,created_time",
+                "fields": "id,message,created_time,full_picture",
                 "limit": 20
             })
-            return resp.json()
+            data = resp.json()
+            if "error" in data:
+                return data
+            
+            posts = []
+            for post in data.get("data", []):
+                posts.append({
+                    "id": post["id"],
+                    "message": post.get("message", "[No Text]"),
+                    "created_time": post.get("created_time", ""),
+                    "picture": post.get("full_picture", "")
+                })
+            return {"data": posts}
 
 @router.get("/api/live/debug")
 async def debug_live_fb(request: Request):
@@ -220,8 +233,8 @@ async def debug_live_fb(request: Request):
 async def demo_posts():
     """Returns placeholder demo posts."""
     return [
-        {"id": "demo_1", "text": "Post promotionnel de test", "date": "2024-05-10", "platform": "facebook"},
-        {"id": "demo_2", "text": "Concours Saint Valentin", "date": "2024-02-14", "platform": "facebook"}
+        {"id": "demo_1", "text": "Post promotionnel de test", "date": "2024-05-10", "platform": "facebook", "picture": "https://placehold.co/600x400/2a2d3e/ffc107?text=Demo+Post+1"},
+        {"id": "demo_2", "text": "Concours Saint Valentin", "date": "2024-02-14", "platform": "facebook", "picture": "https://placehold.co/600x400/2a2d3e/e91e63?text=Demo+Post+2"}
     ]
 
 @router.post("/api/draw")
