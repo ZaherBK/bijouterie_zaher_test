@@ -136,17 +136,7 @@ class GiveawayService:
         """Filters the comment list based on giveaway rules."""
         filtered = comments
 
-        # 1. Filter Duplicates (Keep only 1 entry per user based on user_id)
-        if filters.get("filter_duplicates"):
-            seen_users = set()
-            unique_comments = []
-            for c in filtered:
-                if c["user_id"] not in seen_users:
-                    unique_comments.append(c)
-                    seen_users.add(c["user_id"])
-            filtered = unique_comments
-
-        # 2. Filter Mentions (Require minimum number of @mentions)
+        # 1. Filter Mentions (Require minimum number of @mentions)
         min_mentions = filters.get("min_mentions", 0)
         if min_mentions > 0:
             mention_filtered = []
@@ -198,6 +188,19 @@ class GiveawayService:
             # Check the boolean flag we set during fetch
             filtered = [c for c in filtered if c.get("liked_post", False)]
 
+        # 7. VERY LAST STEP: Filter Duplicates (Keep only 1 entry per user based on user_id)
+        # This is critical to run last so we don't accidentally discard a user's winning comment that has the right hashtag
+        # just because their first comment lacked it!
+        if filters.get("filter_duplicates"):
+            seen_users = set()
+            unique_comments = []
+            for c in filtered:
+                if c["user_id"] not in seen_users:
+                    unique_comments.append(c)
+                    seen_users.add(c["user_id"])
+            filtered = unique_comments
+
+        random.shuffle(filtered)
         return filtered
 
     @staticmethod
