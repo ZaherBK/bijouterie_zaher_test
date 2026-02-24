@@ -10,7 +10,7 @@ import httpx
 
 class GiveawayService:
     @staticmethod
-    async def fetch_comments(post_ids: List[str], platform: str, fb_token: str = None, filters: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    async def fetch_comments(post_ids: List[str], platform: str, fb_token: str = None, page_id: str = None, filters: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         if filters is None: filters = {}
         all_comments = []
         is_demo = any("demo" in p or "post_" in p for p in post_ids)
@@ -45,8 +45,14 @@ class GiveawayService:
                         else:
                             raise Exception(f"Instagram API Error: {data.get('error', {}).get('message', 'Unknown Error')}")
                     else:
+                        # For Page Access Tokens, Facebook often requires the Page ID to be prepended to the Post ID
+                        # Unless the post_id already contains an underscore, we format it as {page_id}_{post_id}
+                        actual_post_id = post_id
+                        if page_id and "_" not in post_id and platform == "facebook":
+                            actual_post_id = f"{page_id}_{post_id}"
+
                         # 1. Fetch Facebook Comments
-                        resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/comments", params={
+                        resp = await client.get(f"https://graph.facebook.com/v19.0/{actual_post_id}/comments", params={
                             "access_token": fb_token,
                             "fields": "id,from,message,created_time,attachment,like_count",
                             "filter": "stream" if filters.get("include_replies") else "toplevel",
@@ -58,7 +64,7 @@ class GiveawayService:
                         # 2. Fetch Facebook Likes if requested (Premium Filter)
                         post_likers = set()
                         if filters.get("require_like"):
-                            likes_resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/likes", params={
+                            likes_resp = await client.get(f"https://graph.facebook.com/v19.0/{actual_post_id}/likes", params={
                                 "access_token": fb_token,
                                 "limit": 1000
                             })
