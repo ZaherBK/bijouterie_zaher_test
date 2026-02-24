@@ -265,7 +265,7 @@ async def preview_participants(
     fb_token = page_token or request.cookies.get("fb_token") or request.session.get("fb_access_token")
 
     try:
-        from app.services.giveaway import GiveawayService
+        fallback_token = request.cookies.get("fb_token") or request.session.get("fb_access_token")
         
         participants = await GiveawayService.draw_winners(
             db=db,
@@ -274,6 +274,7 @@ async def preview_participants(
             num_winners=0,
             filters=data.get("filters", {}),
             fb_token=fb_token,
+            fallback_token=fallback_token,
             preview_only=True
         )
         
@@ -344,6 +345,8 @@ async def draw_winners(
     try:
         from app.services.giveaway import GiveawayService
         
+        fallback_token = request.cookies.get("fb_token") or request.session.get("fb_access_token")
+        
         # We will build this service next.
         winners = await GiveawayService.draw_winners(
             db=db,
@@ -351,7 +354,8 @@ async def draw_winners(
             platform=platform,
             num_winners=num_winners,
             filters=data.get("filters", {}),
-            fb_token=fb_token
+            fb_token=fb_token,
+            fallback_token=fallback_token
         )
         
         return {"status": "success", "winners": winners}

@@ -10,7 +10,7 @@ import httpx
 
 class GiveawayService:
     @staticmethod
-    async def fetch_comments(post_ids: List[str], platform: str, fb_token: str = None, page_id: str = None, filters: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    async def fetch_comments(post_ids: List[str], platform: str, fb_token: str = None, fallback_token: str = None, filters: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         if filters is None: filters = {}
         all_comments = []
         is_demo = any("demo" in p or "post_" in p for p in post_ids)
@@ -54,6 +54,23 @@ class GiveawayService:
                             "limit": 1000
                         })
                         data = resp.json()
+                        
+                        # Fallback Strategy: If Page Token fails with OAuthException (like #10 pages_read_engagement), retry with User Token
+                        if "error" in data and fallback_token and fallback_token != fb_token:
+                            print(f"[Giveaway Debug] Page Token failed for post {post_id}: {data['error'].get('message')}. Retrying with User Fallback Token...")
+                            retry_resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/comments", params={
+                                "access_token": fallback_token,
+                                "fields": "id,from,message,created_time,attachment,like_count",
+                                "filter": "stream" if filters.get("include_replies") else "toplevel",
+                                "summary": "1",
+                                "limit": 1000
+                            })
+                            retry_data = retry_resp.json()
+                            if "error" not in retry_data:
+                                print(f"[Giveaway Debug] Fallback Token succeeded for post {post_id}.")
+                                data = retry_data
+                                # Switch the token for subsequent requests (like fetching likes)
+                                fb_token = fallback_token
                         
                         # 2. Fetch Facebook Likes if requested (Premium Filter)
                         post_likers = set()
@@ -253,12 +270,12 @@ class GiveawayService:
         return filtered
 
     @staticmethod
-    async def draw_winners(db: AsyncSession, post_ids: List[str], platform: str, num_winners: int, filters: Dict[str, Any], fb_token: str = None, preview_only: bool = False) -> List[Dict[str, Any]]:
+    async def draw_winners(db: AsyncSession, post_ids: List[str], platform: str, num_winners: int, filters: Dict[str, Any], fb_token: str = None, fallback_token: str = None, preview_only: bool = False) -> List[Dict[str, Any]]:
         """
         Executes the full Giveaway pipeline: Fetch -> Filter -> Draw.
         If preview_only is True, returns ALL eligible comments without drawing.
         """
-        raw_comments = await GiveawayService.fetch_comments(post_ids, platform, fb_token, filters)
+        raw_comments = await GiveawayService.fetch_comments(post_ids, platform, fb_token, fallback_token=fallback_token, filters=filters)
         
         eligible_comments = GiveawayService.apply_filters(raw_comments, filters)
         
