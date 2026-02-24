@@ -205,8 +205,11 @@ class GiveawayService:
         if filters.get("filter_duplicates"):
             max_entries = 1
         else:
-            max_entries = filters.get("max_entries_per_user")
-            if max_entries is None or max_entries <= 0:
+            max_entries_raw = filters.get("max_entries_per_user")
+            try:
+                max_entries = int(max_entries_raw) if max_entries_raw else float('inf')
+                if max_entries <= 0: max_entries = float('inf')
+            except (ValueError, TypeError):
                 max_entries = float('inf')
 
         user_counts = {}
