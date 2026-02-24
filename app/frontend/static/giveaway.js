@@ -226,9 +226,17 @@ function getDrawPayload() {
 
     const pageSelector = document.getElementById('page-selector');
     let pageToken = null;
-    if (pageSelector && pageSelector.selectedIndex >= 0) {
+    if (pageSelector && pageSelector.selectedIndex > 0) {
         const selectedPageOption = pageSelector.options[pageSelector.selectedIndex];
         pageToken = selectedPageOption ? selectedPageOption.dataset.token : null;
+    }
+
+    // Debug: log token source
+    console.log('[Giveaway Debug] page_token present:', !!pageToken, '| token preview:', pageToken ? pageToken.substring(0, 20) + '...' : 'NULL');
+
+    if (isLiveMode && !pageToken) {
+        alert('Veuillez sélectionner une Page dans le menu déroulant avant de lancer le tirage !');
+        return null;
     }
 
     const filters = {
