@@ -226,9 +226,11 @@ function getDrawPayload() {
 
     const pageSelector = document.getElementById('page-selector');
     let pageToken = null;
+    let pageId = null;
     if (pageSelector && pageSelector.selectedIndex > 0) {
         const selectedPageOption = pageSelector.options[pageSelector.selectedIndex];
         pageToken = selectedPageOption ? selectedPageOption.dataset.token : null;
+        pageId = selectedPageOption ? selectedPageOption.value : null;
     }
 
     // Debug: log token source
@@ -260,7 +262,8 @@ function getDrawPayload() {
         num_winners: numWinners,
         filters: filters,
         is_live: isLiveMode,
-        page_token: pageToken
+        page_token: pageToken,
+        page_id: pageId
     };
 }
 

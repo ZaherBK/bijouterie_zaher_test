@@ -274,6 +274,7 @@ async def preview_participants(
             num_winners=0,
             filters=data.get("filters", {}),
             fb_token=fb_token,
+            page_id=data.get("page_id"),
             preview_only=True
         )
         
@@ -351,7 +352,8 @@ async def draw_winners(
             platform=platform,
             num_winners=num_winners,
             filters=data.get("filters", {}),
-            fb_token=fb_token
+            fb_token=fb_token,
+            page_id=data.get("page_id")
         )
         
         return {"status": "success", "winners": winners}
