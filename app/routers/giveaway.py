@@ -281,6 +281,41 @@ async def preview_participants(
     except Exception as e:
         return {"error": str(e)}
 
+@router.post("/api/debug-token")
+async def debug_token(
+    request: Request,
+    user: dict = Depends(web_require_permission("is_admin"))
+):
+    """Debug endpoint to check what token is being used and its permissions."""
+    data = await request.json()
+    page_token = data.get("page_token")
+    fb_token = page_token or request.cookies.get("fb_token") or request.session.get("fb_access_token")
+    
+    app_token = f"{os.getenv('FB_APP_ID')}|{os.getenv('FB_APP_SECRET')}"
+    
+    result = {
+        "token_source": "page_token" if page_token else ("cookie" if request.cookies.get("fb_token") else "session"),
+        "token_preview": fb_token[:20] + "..." if fb_token else "NO TOKEN",
+    }
+    
+    async with httpx.AsyncClient() as client:
+        # Debug the token
+        resp = await client.get("https://graph.facebook.com/v19.0/debug_token", params={
+            "input_token": fb_token,
+            "access_token": app_token
+        })
+        debug_data = resp.json()
+        result["debug_info"] = debug_data
+        
+        # Also try a simple /me call
+        me_resp = await client.get("https://graph.facebook.com/v19.0/me", params={
+            "access_token": fb_token,
+            "fields": "id,name"
+        })
+        result["me"] = me_resp.json()
+    
+    return result
+
 @router.post("/api/draw")
 async def draw_winners(
     request: Request,
