@@ -213,16 +213,13 @@ window.selectAllPosts = function () {
     updateSelectionSummary();
 }
 
-async function startDraw() {
-    if (isRunning) return;
-
-    // Get all selected options visually
+function getDrawPayload() {
     const selectedCards = document.querySelectorAll('.post-item.selected');
     const postIds = Array.from(selectedCards).map(card => card.dataset.id);
 
     if (postIds.length === 0 || postIds[0] === "") {
         alert("Veuillez sélectionner au moins une publication (Cliquez sur la carte) !");
-        return;
+        return null;
     }
 
     const numWinners = parseInt(document.getElementById('num_winners').value);
@@ -249,6 +246,93 @@ async function startDraw() {
         extra_entries: document.getElementById('extra_entries').value.trim()
     };
 
+    return {
+        post_ids: postIds,
+        platform: currentPlatform,
+        num_winners: numWinners,
+        filters: filters,
+        is_live: isLiveMode,
+        page_token: pageToken
+    };
+}
+
+async function loadParticipants() {
+    if (isRunning) return;
+
+    const payload = getDrawPayload();
+    if (!payload) return;
+
+    isRunning = true;
+    const btn = document.getElementById('btn-load-participants');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Chargement...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch('/giveaways/api/preview', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            alert(data.error);
+            document.getElementById('preview-panel').style.setProperty('display', 'none', 'important');
+            return;
+        }
+
+        if (data.participants && data.participants.length > 0) {
+            document.getElementById('preview-panel').style.setProperty('display', 'block', 'important');
+            document.getElementById('preview-count').textContent = data.participants.length;
+
+            const grid = document.getElementById('preview-grid');
+            grid.innerHTML = '';
+
+            data.participants.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'card bg-dark border-secondary p-2';
+                card.style.width = '250px';
+                card.innerHTML = `
+                    <div class="d-flex align-items-center mb-2">
+                        <img src="${p.profile_pic_url}" width="40" height="40" class="rounded-circle me-2">
+                        <div class="overflow-hidden">
+                            <div class="text-white fw-bold overflow-hidden" style="text-overflow: ellipsis; white-space: nowrap;">${p.user_name}</div>
+                            ${p.like_count > 0 ? `<div class="text-warning small">${p.like_count} Likes</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="text-muted small overflow-hidden" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-break: anywhere;">
+                        ${p.text}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            // Scroll to the preview panel smoothly
+            document.getElementById('preview-panel').scrollIntoView({ behavior: 'smooth' });
+        } else {
+            alert("Aucun participant ne correspond à vos filtres !");
+            document.getElementById('preview-panel').style.setProperty('display', 'none', 'important');
+        }
+
+    } catch (e) {
+        console.error("Error loading participants:", e);
+        alert("Une erreur est survenue lors du chargement des participants.");
+    } finally {
+        isRunning = false;
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function startDraw() {
+    if (isRunning) return;
+
+    const payload = getDrawPayload();
+    if (!payload) return;
+
     // 1. Show Slot Machine Overlay
     const overlay = document.getElementById('slot-machine-overlay');
     const reel = document.getElementById('slot-reel');
@@ -273,14 +357,7 @@ async function startDraw() {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                post_ids: postIds, // <--- MODIFIED to send array
-                platform: currentPlatform,
-                num_winners: numWinners,
-                filters: filters,
-                is_live: isLiveMode,
-                page_token: pageToken
-            })
+            body: JSON.stringify(payload)
         });
 
         const data = await response.json();

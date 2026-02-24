@@ -253,9 +253,10 @@ class GiveawayService:
         return filtered
 
     @staticmethod
-    async def draw_winners(db: AsyncSession, post_ids: List[str], platform: str, num_winners: int, filters: Dict[str, Any], fb_token: str = None) -> List[Dict[str, Any]]:
+    async def draw_winners(db: AsyncSession, post_ids: List[str], platform: str, num_winners: int, filters: Dict[str, Any], fb_token: str = None, preview_only: bool = False) -> List[Dict[str, Any]]:
         """
         Executes the full Giveaway pipeline: Fetch -> Filter -> Draw.
+        If preview_only is True, returns ALL eligible comments without drawing.
         """
         raw_comments = await GiveawayService.fetch_comments(post_ids, platform, fb_token, filters)
         
@@ -263,6 +264,9 @@ class GiveawayService:
         
         if not eligible_comments:
             raise Exception(f"0 participants! Total fetched from Facebook: {len(raw_comments)}. All were dropped by your filters.")
+
+        if preview_only:
+            return eligible_comments
 
         # Ensure we don't try to pick more winners than eligible pools
         actual_winners_count = min(num_winners, len(eligible_comments))

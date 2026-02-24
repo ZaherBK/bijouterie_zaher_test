@@ -245,6 +245,42 @@ async def demo_posts():
         {"id": "demo_2", "text": "Concours Saint Valentin", "date": "2024-02-14", "platform": "facebook", "picture": "https://placehold.co/600x400/2a2d3e/e91e63?text=Demo+Post+2"}
     ]
 
+@router.post("/api/preview")
+async def preview_participants(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(web_require_permission("is_admin"))
+):
+    """
+    Fetches comments and applies filters, returning the full list of eligible participants
+    without actually picking the final winners.
+    """
+    data = await request.json()
+    post_ids = data.get("post_ids", [])
+    if "post_id" in data and not post_ids:
+        post_ids = [data["post_id"]]
+        
+    platform = data.get("platform", "facebook")
+    page_token = data.get("page_token")
+    fb_token = page_token or request.cookies.get("fb_token") or request.session.get("fb_access_token")
+
+    try:
+        from app.services.giveaway import GiveawayService
+        
+        participants = await GiveawayService.draw_winners(
+            db=db,
+            post_ids=post_ids,
+            platform=platform,
+            num_winners=0,
+            filters=data.get("filters", {}),
+            fb_token=fb_token,
+            preview_only=True
+        )
+        
+        return {"status": "success", "participants": participants}
+    except Exception as e:
+        return {"error": str(e)}
+
 @router.post("/api/draw")
 async def draw_winners(
     request: Request,
