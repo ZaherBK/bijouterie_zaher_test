@@ -270,16 +270,19 @@ async def draw_winners(
     page_token = data.get("page_token")
     fb_token = page_token or request.cookies.get("fb_token") or request.session.get("fb_access_token")
 
-    from app.services.giveaway import GiveawayService
-    
-    # We will build this service next.
-    winners = await GiveawayService.draw_winners(
-        db=db,
-        post_ids=post_ids,
-        platform=platform,
-        num_winners=num_winners,
-        filters=data.get("filters", {}),
-        fb_token=fb_token
-    )
-    
-    return {"status": "success", "winners": winners}
+    try:
+        from app.services.giveaway import GiveawayService
+        
+        # We will build this service next.
+        winners = await GiveawayService.draw_winners(
+            db=db,
+            post_ids=post_ids,
+            platform=platform,
+            num_winners=num_winners,
+            filters=data.get("filters", {}),
+            fb_token=fb_token
+        )
+        
+        return {"status": "success", "winners": winners}
+    except Exception as e:
+        return {"error": str(e)}

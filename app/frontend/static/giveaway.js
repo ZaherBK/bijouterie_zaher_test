@@ -285,6 +285,12 @@ async function startDraw() {
 
         const data = await response.json();
 
+        if (data.error) {
+            alert(data.error);
+            overlay.style.setProperty('display', 'none', 'important');
+            return;
+        }
+
         if (data.winners && data.winners.length > 0) {
             title.textContent = "SÉLECTION DU GAGNANT EN COURS...";
             await runSlotAnimation(data.winners, animationDuration);

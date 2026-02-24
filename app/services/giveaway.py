@@ -42,6 +42,8 @@ class GiveawayService:
                                     "like_count": comment.get("like_count", 0),
                                     "timestamp": comment.get("timestamp")
                                 })
+                        else:
+                            raise Exception(f"Instagram API Error: {data.get('error', {}).get('message', 'Unknown Error')}")
                     else:
                         # 1. Fetch Facebook Comments
                         resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/comments", params={
@@ -81,6 +83,8 @@ class GiveawayService:
                                     "like_count": comment.get("like_count", 0),
                                     "timestamp": comment.get("created_time")
                                 })
+                        else:
+                            raise Exception(f"Facebook API Error: {data.get('error', {}).get('message', str(data))}")
             return all_comments
         
         # --- DEMO MODE ---
@@ -258,7 +262,7 @@ class GiveawayService:
         eligible_comments = GiveawayService.apply_filters(raw_comments, filters)
         
         if not eligible_comments:
-            return [] # No one eligible
+            raise Exception(f"0 participants! Total fetched from Facebook: {len(raw_comments)}. All were dropped by your filters.")
 
         # Ensure we don't try to pick more winners than eligible pools
         actual_winners_count = min(num_winners, len(eligible_comments))
