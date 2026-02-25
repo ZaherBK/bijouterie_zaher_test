@@ -108,7 +108,36 @@ class GiveawayService:
                                     post_id = base_post_id
                                     fb_token = fallback_token
                                 
+                        # Fallback Strategy 3: Alternative Graph API Navigation
+                        # Sometimes Facebook restricts direct edge queries on the post object, but allows querying from the page boundary.
                         if "error" in data:
+                            print(f"[Giveaway Debug] All direct post queries failed. Trying alternative feed traversal...")
+                            page_id_to_use = post_id.split("_")[0] if "_" in post_id else None
+                            
+                            if page_id_to_use:
+                                alt_resp = await client.get(f"https://graph.facebook.com/v19.0/{page_id_to_use}", params={
+                                    "access_token": fb_token,
+                                    "fields": f"feed.limit(50){{id,comments.limit(1000){{id,from,message,created_time,attachment,like_count}}}}"
+                                })
+                                alt_data = alt_resp.json()
+                                
+                                if "error" not in alt_data and "feed" in alt_data and "data" in alt_data["feed"]:
+                                    print(f"[Giveaway Debug] Feed traversal succeeded.")
+                                    # Find our post in the feed
+                                    target_full_id = post_id if "_" in post_id else f"{page_id_to_use}_{post_id}"
+                                    found_post = next((p for p in alt_data["feed"]["data"] if p["id"] == target_full_id or p["id"].endswith(f"_{post_id}")), None)
+                                    
+                                    if found_post and "comments" in found_post:
+                                        data = {"data": found_post["comments"].get("data", [])}
+                                        if "error" in data: del data["error"] # Clear the previous error flag
+                                        print(f"[Giveaway Debug] Post found in feed with {len(data['data'])} comments.")
+                                    else:
+                                        print(f"[Giveaway Debug] Post not found in feed or has no comments block.")
+                                else:
+                                    print(f"[Giveaway Debug] Alternative traversal failed: {alt_data.get('error', {}).get('message')}")
+                                
+                        if "error" in data:
+                            # If we STILL have an error, we unfortunately have to raise it as we are blocked.
                             raise Exception(f"Facebook API Error: {data['error'].get('message', 'Unknown Error')}")
                         post_likers = set()
                         if filters.get("require_like"):
