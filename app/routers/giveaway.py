@@ -48,7 +48,7 @@ async def facebook_login(request: Request):
     redirect_uri = "https://hr-sync.onrender.com/giveaways/auth/callback"
     
     # We request permissions to read pages and manage comments
-    permissions = "pages_show_list,pages_read_engagement,pages_manage_metadata,business_management"
+    permissions = "pages_show_list,pages_read_engagement,pages_read_user_content,pages_manage_metadata,business_management"
     
     oauth_url = f"https://www.facebook.com/v19.0/dialog/oauth?" + urlencode({
         "client_id": app_id,
@@ -265,6 +265,8 @@ async def preview_participants(
     fb_token = page_token or request.cookies.get("fb_token") or request.session.get("fb_access_token")
 
     try:
+        from app.services.giveaway import GiveawayService
+        
         fallback_token = request.cookies.get("fb_token") or request.session.get("fb_access_token")
         
         participants = await GiveawayService.draw_winners(
