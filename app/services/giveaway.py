@@ -69,10 +69,47 @@ class GiveawayService:
                             if "error" not in retry_data:
                                 print(f"[Giveaway Debug] Fallback Token succeeded for post {post_id}.")
                                 data = retry_data
-                                # Switch the token for subsequent requests (like fetching likes)
+                                # Switch the token for subsequent requests
                                 fb_token = fallback_token
                         
-                        # 2. Fetch Facebook Likes if requested (Premium Filter)
+                        # Fallback Strategy 2: If both fail, the Graph API might be rejecting the compound `pageid_postid` format for the comments edge.
+                        # Try stripping the `pageid_` prefix if it exists.
+                        if "error" in data and "_" in post_id:
+                            base_post_id = post_id.split("_")[1]
+                            print(f"[Giveaway Debug] Both tokens failed. Stripping prefix and retrying with base ID: {base_post_id}...")
+                            
+                            # Let's try the page token first on the base ID
+                            retry_resp_base = await client.get(f"https://graph.facebook.com/v19.0/{base_post_id}/comments", params={
+                                "access_token": fb_token,
+                                "fields": "id,from,message,created_time,attachment,like_count",
+                                "filter": "stream" if filters.get("include_replies") else "toplevel",
+                                "summary": "1",
+                                "limit": 1000
+                            })
+                            
+                            retry_base_data = retry_resp_base.json()
+                            if "error" not in retry_base_data:
+                                print(f"[Giveaway Debug] Base ID {base_post_id} succeeded with fb_token.")
+                                data = retry_base_data
+                                post_id = base_post_id # Update post_id for the likes API
+                            elif fallback_token:
+                                # Try user token on base ID
+                                retry_resp_base_user = await client.get(f"https://graph.facebook.com/v19.0/{base_post_id}/comments", params={
+                                    "access_token": fallback_token,
+                                    "fields": "id,from,message,created_time,attachment,like_count",
+                                    "filter": "stream" if filters.get("include_replies") else "toplevel",
+                                    "summary": "1",
+                                    "limit": 1000
+                                })
+                                retry_base_user_data = retry_resp_base_user.json()
+                                if "error" not in retry_base_user_data:
+                                    print(f"[Giveaway Debug] Base ID {base_post_id} succeeded with user fallback_token.")
+                                    data = retry_base_user_data
+                                    post_id = base_post_id
+                                    fb_token = fallback_token
+                                
+                        if "error" in data:
+                            raise Exception(f"Facebook API Error: {data['error'].get('message', 'Unknown Error')}")
                         post_likers = set()
                         if filters.get("require_like"):
                             likes_resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/likes", params={
