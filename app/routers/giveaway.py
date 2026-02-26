@@ -44,17 +44,15 @@ async def facebook_login(request: Request):
     if not app_id:
         return RedirectResponse(url="/giveaways/?error=missing_fb_keys")
         
+    # تثبيت الرابط إجبارياً بـ https لتجنب مشاكل البروكسي في Render
     redirect_uri = "https://hr-sync.onrender.com/giveaways/auth/callback"
     
-    # استخدام config_id بدلاً من scope لتفعيل إعدادات Business Login
     oauth_url = f"https://www.facebook.com/v19.0/dialog/oauth?" + urlencode({
         "client_id": app_id,
         "redirect_uri": redirect_uri,
         "response_type": "code",
-        "config_id": "1278079194210534"
+        "config_id": "1278079194210534"  # المعرف الخاص بك
     })
-    
-    return RedirectResponse(url=oauth_url)
     
     return RedirectResponse(url=oauth_url)
 
@@ -67,42 +65,52 @@ async def facebook_logout(request: Request):
     response.delete_cookie("fb_token")
     return response
 
-@router.get("/auth/callback", name="facebook_callback")
+@router.get("/auth/callback")
 async def facebook_callback(request: Request, code: str = None, error: str = None):
-    """Handles the OAuth redirect from Meta."""
+    """Handles the Meta OAuth redirect, exchanges code for token, and gets Page Token."""
     if error or not code:
         return RedirectResponse(url="/giveaways/?error=auth_failed")
         
     app_id = os.getenv("FB_APP_ID")
     app_secret = os.getenv("FB_APP_SECRET")
-    redirect_uri = str(request.url_for("facebook_callback"))
+    redirect_uri = "https://hr-sync.onrender.com/giveaways/auth/callback"
     
-    # Exchange code for token
-    token_url = "https://graph.facebook.com/v19.0/oauth/access_token"
     async with httpx.AsyncClient() as client:
-        resp = await client.get(token_url, params={
+        # 1. Exchange code for User Access Token
+        token_url = f"https://graph.facebook.com/v19.0/oauth/access_token"
+        token_res = await client.get(token_url, params={
             "client_id": app_id,
             "redirect_uri": redirect_uri,
             "client_secret": app_secret,
             "code": code
         })
+        token_data = token_res.json()
+        user_token = token_data.get("access_token")
         
-        data = resp.json()
-        if "access_token" in data:
-            # Store safely in session
-            request.session["fb_access_token"] = data["access_token"]
-            response = RedirectResponse(url="/giveaways/?success=connected")
-            response.set_cookie(
-                key="fb_token", 
-                value=data["access_token"], 
-                httponly=True, 
-                secure=True, 
-                samesite='lax',
-                max_age=3600*24*60
-            )
-            return response
+        if not user_token:
+            return RedirectResponse(url="/giveaways/?error=token_exchange_failed")
             
-    return RedirectResponse(url="/giveaways/?error=token_exchange_failed")
+        # 2. Exchange User Token for Page Access Token
+        accounts_url = f"https://graph.facebook.com/v19.0/me/accounts?access_token={user_token}"
+        accounts_res = await client.get(accounts_url)
+        accounts_data = accounts_res.json()
+        
+        pages = accounts_data.get("data", [])
+        page_token = None
+        page_id = None
+        
+        if pages:
+            page_token = pages[0].get("access_token")
+            page_id = pages[0].get("id")
+            
+        response = RedirectResponse(url="/giveaways/")
+        response.set_cookie("fb_token", user_token, max_age=86400)
+        
+        if page_token:
+            response.set_cookie("fb_page_token", page_token, max_age=86400)
+            response.set_cookie("fb_page_id", page_id, max_age=86400)
+            
+        return response
 
 @router.get("/api/live/pages")
 async def get_live_pages(request: Request, platform: str = "facebook"):
@@ -324,14 +332,9 @@ async def draw_winners(
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(web_require_permission("is_admin"))
 ):
-    """
-    The core endpoint to pick a winner.
-    In Live Mode: Queries Facebook Graph API.
-    In Demo Mode: Uses a simulated pool of comments.
-    """
+    """The core endpoint to pick a winner."""
     data = await request.json()
     
-    # Handle both single and array of post IDs
     post_ids = data.get("post_ids", [])
     if "post_id" in data and not post_ids:
         post_ids = [data["post_id"]]
@@ -339,26 +342,21 @@ async def draw_winners(
     platform = data.get("platform", "facebook")
     num_winners = int(data.get("num_winners", 1))
     
-    # Grab the token from cookies
+    # إصلاح قاتل: الأولوية لتوكن الصفحة قبل توكن المستخدم
     page_token = data.get("page_token")
-    fb_token = page_token or request.cookies.get("fb_token") or request.session.get("fb_access_token")
+    fb_token = page_token or request.cookies.get("fb_page_token") or request.cookies.get("fb_token") or request.session.get("fb_access_token")
 
     try:
         from app.services.giveaway import GiveawayService
         
-        fallback_token = request.cookies.get("fb_token") or request.session.get("fb_access_token")
-        
-        # We will build this service next.
         winners = await GiveawayService.draw_winners(
             db=db,
             post_ids=post_ids,
             platform=platform,
             num_winners=num_winners,
             filters=data.get("filters", {}),
-            fb_token=fb_token,
-            fallback_token=fallback_token
+            fb_token=fb_token
         )
-        
-        return {"status": "success", "winners": winners}
+        return {"winners": winners}
     except Exception as e:
-        return {"error": str(e)}
+        return JSONResponse({"error": str(e)}, status_code=500)
