@@ -51,7 +51,7 @@ async def facebook_login(request: Request):
         "client_id": app_id,
         "redirect_uri": redirect_uri,
         "response_type": "code",
-        "config_id": "1475879330649420"
+        "config_id": "1278079194210534"
     })
     
     return RedirectResponse(url=oauth_url)
