@@ -42,20 +42,19 @@ async def facebook_login(request: Request):
     """Refers the user to the Meta OAuth login page."""
     app_id = os.getenv("FB_APP_ID")
     if not app_id:
-        # Prevent crash if user clicks it without setting up .env yet
         return RedirectResponse(url="/giveaways/?error=missing_fb_keys")
         
     redirect_uri = "https://hr-sync.onrender.com/giveaways/auth/callback"
     
-    # We request permissions to read pages and manage comments
-    permissions = "pages_show_list,pages_read_engagement,pages_read_user_content,pages_manage_metadata,business_management"
-    
+    # استخدام config_id بدلاً من scope لتفعيل إعدادات Business Login
     oauth_url = f"https://www.facebook.com/v19.0/dialog/oauth?" + urlencode({
         "client_id": app_id,
         "redirect_uri": redirect_uri,
-        "scope": permissions + ",instagram_basic,instagram_manage_comments",
-        "response_type": "code"
+        "response_type": "code",
+        "config_id": "1475879330649420"
     })
+    
+    return RedirectResponse(url=oauth_url)
     
     return RedirectResponse(url=oauth_url)
 
