@@ -55,9 +55,56 @@ class GiveawayService:
                         })
                         data = resp.json()
                         
-                        # Fallback Strategy: If Page Token fails with OAuthException (like #10 pages_read_engagement), retry with User Token
+                        # FALLBACK STRATEGY 1: Alternative Graph API Navigation (Feed Traversal)
+                        # We prioritize this because using the Page Token preserves 'from' identities, unlike the User Token.
+                        if "error" in data:
+                            print(f"[Giveaway Debug] Direct post query failed. Trying robust feed traversal Fallback 1...")
+                            page_id_to_use = post_id.split("_")[0] if "_" in post_id else None
+                            
+                            if page_id_to_use:
+                                alt_resp = await client.get(f"https://graph.facebook.com/v19.0/{page_id_to_use}", params={
+                                    "access_token": fb_token,
+                                    "fields": f"feed.limit(50){{id,comments.limit(1000){{id,from,message,created_time,attachment,like_count}}}}"
+                                })
+                                alt_data = alt_resp.json()
+                                
+                                if "error" not in alt_data and "feed" in alt_data and "data" in alt_data["feed"]:
+                                    print(f"[Giveaway Debug] Feed traversal succeeded.")
+                                    target_full_id = post_id if "_" in post_id else f"{page_id_to_use}_{post_id}"
+                                    found_post = next((p for p in alt_data["feed"]["data"] if p["id"] == target_full_id or p["id"].endswith(f"_{post_id}")), None)
+                                    
+                                    if found_post and "comments" in found_post:
+                                        data = {"data": found_post["comments"].get("data", [])}
+                                        if "error" in data: del data["error"]
+                                        print(f"[Giveaway Debug] Post found in feed with {len(data['data'])} comments.")
+                                    else:
+                                        print(f"[Giveaway Debug] Post not found in feed or has zero comments.")
+                                else:
+                                    print(f"[Giveaway Debug] Alternative traversal failed: {alt_data.get('error', {}).get('message')}")
+
+                        # FALLBACK STRATEGY 2: Strip `page_id_` prefix
+                        if "error" in data and "_" in post_id:
+                            base_post_id = post_id.split("_")[1]
+                            print(f"[Giveaway Debug] Fallback 1 failed. Stripping prefix and retrying with base ID: {base_post_id} Fallback 2...")
+                            
+                            retry_resp_base = await client.get(f"https://graph.facebook.com/v19.0/{base_post_id}/comments", params={
+                                "access_token": fb_token,
+                                "fields": "id,from,message,created_time,attachment,like_count",
+                                "filter": "stream" if filters.get("include_replies") else "toplevel",
+                                "summary": "1",
+                                "limit": 1000
+                            })
+                            retry_base_data = retry_resp_base.json()
+                            if "error" not in retry_base_data:
+                                print(f"[Giveaway Debug] Base ID {base_post_id} succeeded with fb_token.")
+                                data = retry_base_data
+                                post_id = base_post_id 
+                                
+                        # FALLBACK STRATEGY 3: User Token (Last Resort - Hides Identities)
                         if "error" in data and fallback_token and fallback_token != fb_token:
-                            print(f"[Giveaway Debug] Page Token failed for post {post_id}: {data['error'].get('message')}. Retrying with User Fallback Token...")
+                            print(f"[Giveaway Debug] All Page Token methods failed. Using User Fallback Token (Strategy 3)... Warning: Hides identities.")
+                            
+                            # Try with the compound ID first
                             retry_resp = await client.get(f"https://graph.facebook.com/v19.0/{post_id}/comments", params={
                                 "access_token": fallback_token,
                                 "fields": "id,from,message,created_time,attachment,like_count",
@@ -66,34 +113,14 @@ class GiveawayService:
                                 "limit": 1000
                             })
                             retry_data = retry_resp.json()
+                            
                             if "error" not in retry_data:
-                                print(f"[Giveaway Debug] Fallback Token succeeded for post {post_id}.")
+                                print(f"[Giveaway Debug] User Fallback Token succeeded for post {post_id}.")
                                 data = retry_data
-                                # Switch the token for subsequent requests
                                 fb_token = fallback_token
-                        
-                        # Fallback Strategy 2: If both fail, the Graph API might be rejecting the compound `pageid_postid` format for the comments edge.
-                        # Try stripping the `pageid_` prefix if it exists.
-                        if "error" in data and "_" in post_id:
-                            base_post_id = post_id.split("_")[1]
-                            print(f"[Giveaway Debug] Both tokens failed. Stripping prefix and retrying with base ID: {base_post_id}...")
-                            
-                            # Let's try the page token first on the base ID
-                            retry_resp_base = await client.get(f"https://graph.facebook.com/v19.0/{base_post_id}/comments", params={
-                                "access_token": fb_token,
-                                "fields": "id,from,message,created_time,attachment,like_count",
-                                "filter": "stream" if filters.get("include_replies") else "toplevel",
-                                "summary": "1",
-                                "limit": 1000
-                            })
-                            
-                            retry_base_data = retry_resp_base.json()
-                            if "error" not in retry_base_data:
-                                print(f"[Giveaway Debug] Base ID {base_post_id} succeeded with fb_token.")
-                                data = retry_base_data
-                                post_id = base_post_id # Update post_id for the likes API
-                            elif fallback_token:
-                                # Try user token on base ID
+                            elif "_" in post_id:
+                                # Try with the base ID if compound fails
+                                base_post_id = post_id.split("_")[1]
                                 retry_resp_base_user = await client.get(f"https://graph.facebook.com/v19.0/{base_post_id}/comments", params={
                                     "access_token": fallback_token,
                                     "fields": "id,from,message,created_time,attachment,like_count",
@@ -107,37 +134,8 @@ class GiveawayService:
                                     data = retry_base_user_data
                                     post_id = base_post_id
                                     fb_token = fallback_token
-                                
-                        # Fallback Strategy 3: Alternative Graph API Navigation
-                        # Sometimes Facebook restricts direct edge queries on the post object, but allows querying from the page boundary.
+
                         if "error" in data:
-                            print(f"[Giveaway Debug] All direct post queries failed. Trying alternative feed traversal...")
-                            page_id_to_use = post_id.split("_")[0] if "_" in post_id else None
-                            
-                            if page_id_to_use:
-                                alt_resp = await client.get(f"https://graph.facebook.com/v19.0/{page_id_to_use}", params={
-                                    "access_token": fb_token,
-                                    "fields": f"feed.limit(50){{id,comments.limit(1000){{id,from,message,created_time,attachment,like_count}}}}"
-                                })
-                                alt_data = alt_resp.json()
-                                
-                                if "error" not in alt_data and "feed" in alt_data and "data" in alt_data["feed"]:
-                                    print(f"[Giveaway Debug] Feed traversal succeeded.")
-                                    # Find our post in the feed
-                                    target_full_id = post_id if "_" in post_id else f"{page_id_to_use}_{post_id}"
-                                    found_post = next((p for p in alt_data["feed"]["data"] if p["id"] == target_full_id or p["id"].endswith(f"_{post_id}")), None)
-                                    
-                                    if found_post and "comments" in found_post:
-                                        data = {"data": found_post["comments"].get("data", [])}
-                                        if "error" in data: del data["error"] # Clear the previous error flag
-                                        print(f"[Giveaway Debug] Post found in feed with {len(data['data'])} comments.")
-                                    else:
-                                        print(f"[Giveaway Debug] Post not found in feed or has no comments block.")
-                                else:
-                                    print(f"[Giveaway Debug] Alternative traversal failed: {alt_data.get('error', {}).get('message')}")
-                                
-                        if "error" in data:
-                            # If we STILL have an error, we unfortunately have to raise it as we are blocked.
                             raise Exception(f"Facebook API Error: {data['error'].get('message', 'Unknown Error')}")
                         post_likers = set()
                         if filters.get("require_like"):
