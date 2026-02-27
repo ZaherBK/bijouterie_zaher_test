@@ -38,7 +38,7 @@
             <div class="card premium-card mb-4">
                 <div class="card-body p-4 text-center">
 
-                    {% if request.session.get('fb_access_token') %}
+                    {% if request.cookies.get('fb_token') or request.session.get('fb_access_token') %}
                     <div class="badge bg-success text-white fs-6 mb-3"><i class="bi bi-link"></i> Live Meta API
                         Connected</div>
                     <img src="{{ url_for('static', path='logo.png') }}" alt="Logo" class="img-fluid mb-3"
