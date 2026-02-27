@@ -252,6 +252,51 @@ async def debug_live_fb(request: Request):
         }
 
 
+@router.get("/api/live/test-comments")
+async def test_comments_api(request: Request, post_id: str = None):
+    """Comprehensive test to find which Facebook API method works for reading comments."""
+    user_token = request.cookies.get("fb_token")
+    page_token = request.cookies.get("fb_page_token")
+    
+    if not post_id:
+        return {"error": "provide ?post_id=PAGE_ID_POST_ID as query parameter", "hint": "Look at existing post IDs in the page selector or copy from a fb post URL"}
+    
+    if not user_token and not page_token:
+        return {"error": "Not authenticated. Connect via Login with Meta first."}
+    
+    results = {}
+    base_post_id = post_id.split("_")[1] if "_" in post_id else post_id
+    
+    async with httpx.AsyncClient() as client:
+        for token_name, token in [("user_token", user_token), ("page_token", page_token)]:
+            if not token: continue
+            for method_name, url, params in [
+                (f"edge_comments_v22",
+                 f"https://graph.facebook.com/v22.0/{post_id}/comments",
+                 {"access_token": token, "limit": 3}),
+                (f"field_expansion_v22",
+                 f"https://graph.facebook.com/v22.0/{post_id}",
+                 {"access_token": token, "fields": "id,comments.limit(3){id,from,message}"}),
+                (f"edge_comments_base_id_v22",
+                 f"https://graph.facebook.com/v22.0/{base_post_id}/comments",
+                 {"access_token": token, "limit": 3}),
+                (f"field_expansion_base_id_v22",
+                 f"https://graph.facebook.com/v22.0/{base_post_id}",
+                 {"access_token": token, "fields": "id,comments.limit(3){id,from,message}"}),
+            ]:
+                key = f"{token_name}__{method_name}"
+                try:
+                    r = await client.get(url, params=params)
+                    data = r.json()
+                    if "error" in data:
+                        results[key] = {"status": "FAILED", "error": data["error"].get("message"), "code": data["error"].get("code")}
+                    else:
+                        results[key] = {"status": "SUCCESS", "sample_count": len(data.get("data", data.get("comments", {}).get("data", [])))}
+                except Exception as e:
+                    results[key] = {"status": "EXCEPTION", "error": str(e)}
+    
+    return {"post_id_tested": post_id, "base_post_id": base_post_id, "results": results}
+
 # --- DEMO API ENDPOINTS ---
 
 @router.get("/api/demo/posts")
