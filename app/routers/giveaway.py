@@ -47,11 +47,21 @@ async def facebook_login(request: Request):
     # تثبيت الرابط إجبارياً بـ https لتجنب مشاكل البروكسي في Render
     redirect_uri = "https://hr-sync.onrender.com/giveaways/auth/callback"
     
+    # We explicitly declare all required scopes here, NOT via config_id.
+    # config_id controls permissions from the Meta Developer portal, bypassing code-level scope control.
+    # Using explicit scope guarantees that pages_read_engagement is always requested.
+    required_scope = ",".join([
+        "pages_show_list",
+        "pages_read_engagement",
+        "pages_read_user_content",
+        "business_management"
+    ])
+    
     oauth_url = f"https://www.facebook.com/v19.0/dialog/oauth?" + urlencode({
         "client_id": app_id,
         "redirect_uri": redirect_uri,
+        "scope": required_scope,
         "response_type": "code",
-        "config_id": "1278079194210534"  # المعرف الخاص بك
     })
     
     return RedirectResponse(url=oauth_url)
