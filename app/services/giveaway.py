@@ -91,7 +91,24 @@ class GiveawayService:
                                 fb_token = fallback_token
                         
                         if "error" in data:
-                            raise Exception(f"Facebook API Error: {data['error'].get('message', 'Unknown Error')}")
+                            err = data['error']
+                            err_code = err.get('code', 0)
+                            err_msg = err.get('message', 'Unknown Error')
+                            
+                            if err_code == 10:
+                                raise Exception(
+                                    "❌ Accès Facebook bloqué : La feature 'Page Public Content Access' n'est pas encore approuvée pour cette application.\n"
+                                    "➡️ Solution : Allez sur developers.facebook.com > votre App > App Review > Permissions and Features > "
+                                    "cherchez 'Page Public Content Access' et cliquez 'Request Advanced Access'.\n"
+                                    "En attendant l'approbation, utilisez la plateforme Instagram qui fonctionne parfaitement !"
+                                )
+                            elif err_code == 12:
+                                raise Exception(
+                                    "❌ Ce type de publication Facebook n'est pas accessible via l'API (format déprécié).\n"
+                                    "➡️ Essayez de sélectionner une autre publication plus récente (photo ou vidéo)."
+                                )
+                            else:
+                                raise Exception(f"Erreur API Facebook [{err_code}]: {err_msg}")
 
                         post_likers = set()
                         if filters.get("require_like"):
