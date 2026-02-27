@@ -2351,3 +2351,84 @@ html[data-theme='light'] .leaderboard-card.rank-3 {
   color: transparent !important;
   /* Hide any cursor text color */
 }
+
+/* =========================================================
+   GIVEAWAY PREVIEW CARDS - GLASSMORPHISM
+   ========================================================= */
+.glass-card-preview {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  overflow: hidden;
+}
+
+.glass-card-preview:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(124, 92, 255, 0.15);
+  border-color: rgba(124, 92, 255, 0.3);
+}
+
+.glass-card-preview .card-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+  margin-bottom: 8px;
+}
+
+.glass-card-preview img.preview-avatar {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  border: 2px solid rgba(124, 92, 255, 0.5);
+  padding: 2px;
+  object-fit: cover;
+}
+
+.glass-card-preview .preview-name {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.glass-card-preview .preview-comment {
+  font-size: 0.85rem;
+  color: #aeb8cc;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-break: anywhere;
+}
+
+/* Custom scrollbar for preview grid */
+#preview-grid {
+  padding-right: 8px;
+  /* Room for scrollbar */
+}
+
+#preview-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+#preview-grid::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+#preview-grid::-webkit-scrollbar-thumb {
+  background: rgba(124, 92, 255, 0.5);
+  border-radius: 8px;
+}
+
+#preview-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 92, 255, 0.8);
+}

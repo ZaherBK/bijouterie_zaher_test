@@ -304,17 +304,17 @@ async function loadParticipants() {
 
             data.participants.forEach(p => {
                 const card = document.createElement('div');
-                card.className = 'card bg-dark border-secondary p-2';
-                card.style.width = '250px';
+                card.className = 'glass-card-preview p-3';
+                card.style.width = '260px';
                 card.innerHTML = `
-                    <div class="d-flex align-items-center mb-2">
-                        <img src="${p.profile_pic_url}" width="40" height="40" class="rounded-circle me-2">
-                        <div class="overflow-hidden">
-                            <div class="text-white fw-bold overflow-hidden" style="text-overflow: ellipsis; white-space: nowrap;">${p.user_name}</div>
-                            ${p.like_count > 0 ? `<div class="text-warning small">${p.like_count} Likes</div>` : ''}
+                    <div class="card-header-inner">
+                        <img src="${p.profile_pic_url}" class="preview-avatar" onerror="this.src='https://placehold.co/100x100/1e2130/ffffff?text=U'">
+                        <div class="overflow-hidden w-100">
+                            <div class="preview-name" title="${p.user_name}">${p.user_name}</div>
+                            ${p.like_count > 0 ? `<div class="badge bg-warning text-dark mt-1" style="font-size: 0.65rem;"><i class="bi bi-heart-fill text-danger"></i> ${p.like_count} Likes</div>` : ''}
                         </div>
                     </div>
-                    <div class="text-muted small overflow-hidden" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-break: anywhere;">
+                    <div class="preview-comment">
                         ${p.text}
                     </div>
                 `;
